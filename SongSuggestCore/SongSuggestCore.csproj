@@ -8,4 +8,8 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
+  <Target Name="RunCopyDestinations" AfterTargets="Build">
+    <Exec Command="if exist &quot;$(TargetDir)buildactions.bat&quot; &quot;$(TargetDir)buildactions.bat&quot;" />
+  </Target>
+
 </Project>
