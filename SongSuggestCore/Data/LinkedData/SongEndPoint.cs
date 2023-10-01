@@ -128,7 +128,8 @@ namespace LinkedData
             }
             //Reduce it to average per song
             localPPAverage = localPPAverage / 50;// originSongIDs.Count();
-            localVSGlobalPP = localPPAverage / songSuggest.top10kPlayers.top10kSongMeta[songID].averageScore;
+            //localVSGlobalPP = localPPAverage / songSuggest.scoreSaberScoreBoard.top10kSongMeta[songID].averageScore;
+            localVSGlobalPP = localPPAverage / songSuggest.songSuggest.Leaderboard().top10kSongMeta[songID].averageScore;
         }
     }
 }

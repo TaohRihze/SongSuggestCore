@@ -15,12 +15,12 @@ namespace LinkedData
 
         public void Save()
         {
-            songSuggest.fileHandler.SaveLinkedData(top10kPlayers);
+            songSuggest.fileHandler.SaveScoreBoard(top10kPlayers,"Top10KPlayers");
         }
 
-        public void Load()
+        public void Load(string scoreBoardName)
         {
-            top10kPlayers = songSuggest.fileHandler.LoadLinkedData();
+            top10kPlayers = songSuggest.fileHandler.LoadScoreBoard(scoreBoardName);
             GenerateTop10kSongMeta();
         }
 

@@ -10,6 +10,7 @@ using Data;
 using SongSuggestNS;
 using Settings;
 using PlaylistJson;
+using LocalScores;
 
 
 namespace FileHandling
@@ -77,6 +78,21 @@ namespace FileHandling
             File.WriteAllText(filePathSettings.activePlayerDataPath + fileName+ ".json", JsonConvert.SerializeObject(activePlayer));
         }
 
+        //Load Active Players Local Scores
+        public List<LocalPlayerScore> LoadLocalScores()
+        {
+            if (!File.Exists(filePathSettings.activePlayerDataPath + "Local Scores.json")) SaveLocalScores(new List<LocalPlayerScore>());
+            String loadedString = File.ReadAllText(filePathSettings.activePlayerDataPath + "Local Scores.json");
+            return JsonConvert.DeserializeObject<List<LocalPlayerScore>>(loadedString, serializerSettings);
+        }
+
+        //Save Active Players Data
+        public void SaveLocalScores(List<LocalPlayerScore> localScores)
+        {
+            File.WriteAllText(filePathSettings.activePlayerDataPath + "Local Scores.json", JsonConvert.SerializeObject(localScores));
+        }
+
+
         //Is there a player Refresh File
         public Boolean CheckPlayerRefresh()
         {
@@ -98,18 +114,32 @@ namespace FileHandling
             }
         }
 
-        public List<Top10kPlayer> LoadLinkedData()
+        //public List<Top10kPlayer> LoadLinkedData()
+        //{
+        //    if (!File.Exists(filePathSettings.likedSongsPath + "Top10KPlayers.json")) SaveLinkedData(new List<Top10kPlayer>());
+        //    String linkPlayerJSON = File.ReadAllText(filePathSettings.top10kPlayersPath + "Top10KPlayers.json");
+        //    return JsonConvert.DeserializeObject<List<Top10kPlayer>>(linkPlayerJSON, serializerSettings);
+        //}
+
+        //public void SaveLinkedData(List<Top10kPlayer> players)
+        //{
+        //    File.WriteAllText(filePathSettings.top10kPlayersPath + "Top10KPlayers.json", JsonConvert.SerializeObject(players));
+        //}
+
+        public List<Top10kPlayer> LoadScoreBoard(string scoreBoardName)
         {
-            if (!File.Exists(filePathSettings.likedSongsPath + "Top10KPlayers.json")) SaveLinkedData(new List<Top10kPlayer>());
-            String linkPlayerJSON = File.ReadAllText(filePathSettings.top10kPlayersPath + "Top10KPlayers.json");
+            string fileName = $"{filePathSettings.likedSongsPath}{scoreBoardName}.json";
+            if (!File.Exists(fileName)) SaveScoreBoard(new List<Top10kPlayer>(), scoreBoardName);
+            String linkPlayerJSON = File.ReadAllText(fileName);
             return JsonConvert.DeserializeObject<List<Top10kPlayer>>(linkPlayerJSON, serializerSettings);
         }
 
-        public void SaveLinkedData(List<Top10kPlayer> players)
+        public void SaveScoreBoard(List<Top10kPlayer> players, string scoreBoardName)
         {
-            File.WriteAllText(filePathSettings.top10kPlayersPath + "Top10KPlayers.json", JsonConvert.SerializeObject(players));
+            string fileName = $"{filePathSettings.likedSongsPath}{scoreBoardName}.json";
+            File.WriteAllText(fileName, JsonConvert.SerializeObject(players));
         }
- 
+
         public Boolean LinkedDataExist()
         {
             return File.Exists(filePathSettings.top10kPlayersPath + "Top10KPlayers.json");

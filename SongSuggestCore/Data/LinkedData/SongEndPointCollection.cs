@@ -9,7 +9,7 @@ namespace LinkedData
     public class SongEndPointCollection
     {
         public SortedDictionary<String, SongEndPoint> endPoints = new SortedDictionary<String, SongEndPoint>();
-        public void SetRelevance(Actions.RankedSongsSuggest actions,int originPoints,int requiredMatches)
+        public void SetRelevance(Actions.RankedSongSuggest actions,int originPoints,int requiredMatches)
         {
             int percentDoneCalc = 0;
             foreach (SongEndPoint songEndPoint in endPoints.Values)

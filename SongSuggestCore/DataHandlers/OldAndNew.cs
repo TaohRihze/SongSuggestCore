@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using System.Data;
+using Curve;
 
 namespace Actions
 {
@@ -186,8 +187,8 @@ namespace Actions
                 : false;
 
             Func<string, bool> scoreSaberStar = songID =>
-                settings.ignoreBeatSaberStarBelow < songSuggest.songLibrary.songs[songID].starBeatSaber &&
-                settings.ignoreBeatSaberStarAbove > songSuggest.songLibrary.songs[songID].starBeatSaber;
+                settings.ignoreBeatSaberStarBelow < songSuggest.songLibrary.songs[songID].starScoreSaber &&
+                settings.ignoreBeatSaberStarAbove > songSuggest.songLibrary.songs[songID].starScoreSaber;
 
             Func<string, bool> accSaberComplexity = songID =>
                 settings.ignoreAccSaberComplexityBelow < songSuggest.songLibrary.songs[songID].complexityAccSaber &&
@@ -230,6 +231,9 @@ namespace Actions
                     break;
                 case SongSortCriteria.PP:
                     songs = PP(songs);
+                    break;
+                case SongSortCriteria.AP:
+                    songs = AP(songs);
                     break;
                 case SongSortCriteria.Star:
                     songs = Star(songs);
@@ -309,13 +313,33 @@ namespace Actions
             return setScores.Union(unplayedSongs).ToList();
         }
 
+        //Sort the selection by AP
+        private List<String> AP(List<String> selectedSongs)
+        {
+            //Lets find set scores and order them
+            var setScores = selectedSongs
+                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID))
+                .Select(songID => songSuggest.activePlayer.scores[songID])
+                .OrderByDescending(score => AccSaberCurve.AP(score.accuracy/100, songSuggest.songLibrary.songs[score.songID].complexityAccSaber))
+                .Select(score => score.songID)
+                .ToList();
+
+            //Any non found scores (unplayed if added) are found here
+            var unplayedSongs = selectedSongs
+                .Except(setScores)
+                .ToList();
+
+            //Unknown scores are treated as 0 pp, and returned along with set scores
+            return setScores.Union(unplayedSongs).ToList();
+        }
+
         //Sort the selection by Beat Saber Star Rating
         private List<String> Star(List<String> selectedSongs)
         {
             //Order all selected songs by their star rating.
             var sortedScores = selectedSongs
                 .Select(songID => songSuggest.songLibrary.songs[songID])
-                .OrderByDescending(song => song.starBeatSaber)
+                .OrderByDescending(song => song.starScoreSaber)
                 .Select(song => song.scoreSaberID)
                 .ToList();
 

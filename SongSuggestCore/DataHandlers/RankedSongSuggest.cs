@@ -1,22 +1,32 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using PlaylistNS;
 using System.Diagnostics;
 using LinkedData;
 using Settings;
 using SongSuggestNS;
+using Curve;
+using BanLike;
+using SongLibraryNS;
 
 namespace Actions
 {
-    public class RankedSongsSuggest
+    public class RankedSongSuggest
     {
         //Output Active?
-        Boolean showDetailedOutout = false;
+        bool showDetailedOutout = false;
 
         public SongSuggest songSuggest { get; set; }
         //Information for the GUI on how far the update progress is.
+
+        private SuggestSourceManager suggestSM;
+        [Obsolete("External calls should not access Context data. This should be moved into Ranked Song Suggest when possible. This is a workaround to allow temporary access.")]
+        public Top10kPlayers Leaderboard()
+        {
+            return suggestSM.Leaderboard();
+        }
+
         public double songSuggestCompletion { get; set; }
 
         //All found songs ordered by current filter settings.
@@ -50,17 +60,23 @@ namespace Actions
         //Set how many times more pp a person may have be performed on a song before their songs are ignored.
         //1.2 = 120%, 1.1 = 110% etc.
         //1.2 seems to be a good value to cut off low/high acc linkage, while still allowing a player room for growth suggestions
-        //This may be a usefull Difficulty setting in the future.
-        double  betterAccCap = 1.1;
-        double  worseAccCap = 0.7;
+        //Lowered to 10% difference as with flatter cuver and closer new score selection 20% is a large PP jump to search up.
+        //Disabled worseAccCap as it did not seem to change outcome much after new filtered selection type. This helps reduce low link warnings.
+        double betterAccCap = 1.1;
+        double worseAccCap = 0.0;
         //int     songCount;     //Amount of songs to use before filtering to 50
 
         //Amount of Players the user got linked to. Low count then we remove betterAccCap limits.
         //Still low count, then the suggestions may be strange (Way too hard songs), we make sure to evaluate songs
         //(compare the songs min and max range to the players max PP on any song, and remove
         //unrealistic suggestions)
-        int minPlayerLinks = 1000;
+        int minSongLinks = 300;
         int linkedPlayers = 0;
+        int linkedSongs = 0;
+
+        //Add Filler songs if player has a low source song set
+        int targetFillers = 10;
+        int minPlays = 40;
 
         //Value for how many spots must be expected to be improved before being shown in suggestions (unplayed songs are always shown)
         int improveSpots = 5;
@@ -78,7 +94,12 @@ namespace Actions
         //Creates a playlist with 50 suggested songs based on the link system.
         public void SuggestedSongs()
         {
-            //TODO: When done splitting into groups, call groups from SongSuggest instead, and remove this Function.
+            suggestSM = new SuggestSourceManager()
+            {
+                songSuggest = this.songSuggest,
+                PlayerScoreContext = settings.useLocalScores ? PlayerScoreSource.LocalScores : PlayerScoreSource.ScoreSaber,
+                LeaderboardContext = LeaderboardScoreSource.ScoreSaber
+            };
 
             songSuggest.log?.WriteLine("Starting Song Suggest");
 
@@ -101,7 +122,8 @@ namespace Actions
             CreatePlaylist();
 
             //----- Console Writeline for Debug -----
-            songSuggest.log?.WriteLine("Players Linked: {0}", linkedPlayers);
+            songSuggest.log?.WriteLine($"Players Linked: {linkedPlayers}");
+            songSuggest.log?.WriteLine($"Songs Linked: {linkedSongs}");
             songSuggest.log?.WriteLine($"Playlist Generation Done: {timer.ElapsedMilliseconds}ms");
 
             timer.Stop();
@@ -136,7 +158,7 @@ namespace Actions
 
             //Get Link Data
             songSuggest.status = "Finding Link Data";
-            top10kPlayers = songSuggest.top10kPlayers;
+            top10kPlayers = songSuggest.scoreSaberScoreBoard;
             songSuggest.log?.WriteLine($"Done loading and generating the top10k player data: {timer.ElapsedMilliseconds}ms");
 
             //Find the Origin Song ID's based on Active Players data.
@@ -147,7 +169,7 @@ namespace Actions
             songSuggest.status = "Preparing Origin Songs";
             originSongs = CreateOriginPoints(originSongIDs, songSuggest.songBanning.GetPermaBannedIDs());
             //Check if there is no links and if, retry this time without removing lower acc links
-            if (linkedPlayers < minPlayerLinks)
+            if (linkedPlayers < minSongLinks)
             {
                 songSuggest.lowQualitySuggestions = true;
                 songSuggest.log?.WriteLine("Not Enough Player Links Found ({0}) with Acc Limit on. Activate Limit Breaker.", linkedPlayers);
@@ -180,7 +202,7 @@ namespace Actions
             distanceFilterOrdered = targetSongs.endPoints.Values.OrderByDescending(s => s.weightedRelevanceScore).Select(p => p.songID).ToList();
 
             //Filter on how much over/under linked a song is in the active players data vs the global player population
-            styleFilterOrdered = targetSongs.endPoints.Values.OrderBy(s => (0.0 + top10kPlayers.top10kSongMeta[s.songID].count) / (0.0 + s.proportionalStyle)).Select(p => p.songID).ToList();
+            styleFilterOrdered = targetSongs.endPoints.Values.OrderBy(s => (0.0 + suggestSM.Leaderboard().top10kSongMeta[s.songID].count) / (0.0 + s.proportionalStyle)).Select(p => p.songID).ToList();
             //Old bias for more suggestions from highly linked songs.
             //styleFilterOrdered = targetSongs.endPoints.Values.OrderBy(s => (0.0 + top10kPlayers.top10kSongMeta[s.songID].count) / (0.0 + s.songLinks.Count())).Select(p => p.songID).ToList();
 
@@ -201,65 +223,103 @@ namespace Actions
             //Add Liked songs.
             songSuggest.log?.WriteLine("Use Liked Songs: " + useLikedSongs);
 
-            if (useLikedSongs) originSongsIDs.AddRange(songSuggest.songLiking.GetLikedIDs());
+            if (useLikedSongs) originSongsIDs.AddRange(suggestSM.LikedSongs());
             int targetCount = originSongsIDs.Count();
 
 
-            songSuggest.log?.WriteLine("Songs in list: " + originSongsIDs.Count());
+            songSuggest.log?.WriteLine("Liked Songs in list: " + originSongsIDs.Count());
 
             //Add the standard origin songs if either normal mode of filler is activated
             if (!useLikedSongs || fillLikedSongs)
             {
-                //***TST SWITCH BACK TO ACC***
-                originSongsIDs.AddRange(BestPPandAccPlayedsongs(settings.extraSongs+50));
-                //originSongsIDs.AddRange(BestPPandAccPlayedsongs(settings.extraSongs + 50));
                 //update targetsongs to either 50, or liked songs total, whichever is larger
                 targetCount = Math.Max(50, targetCount);
+
+                originSongsIDs.AddRange(SelectPlayedOriginSongs(settings.extraSongs + 50));
+
+                originSongsIDs = originSongsIDs
+                    .Distinct()         //Remove Duplicates
+                    .ToList();
+
+                songSuggest.log?.WriteLine("Liked + Played Songs in list: " + originSongsIDs.Count());
+
+                //int neededFillers = targetFillers - originSongsIDs.Count();
+                int neededFillers = (originSongsIDs.Count == 0) ? targetFillers : 0;
+
+                if (neededFillers > 0)
+                {
+                    //Too few source songs, so autoactivating "Limitbreak" and set low match warning
+                    songSuggest.log?.WriteLine($"Less than {targetFillers} played. Filler Songs Activated");
+                    betterAccCap = Double.MaxValue;
+                    songSuggest.lowQualitySuggestions = true;
+
+                    //Find all songs in the leaderboard with at least a minimum of records amount, and sort them by Max Score, so easiest is first, and remove already approved songs
+                    var fillerSongs = suggestSM.Leaderboard().top10kSongMeta
+                        .Where(c => c.Value.count >= minPlays)
+                        .OrderBy(c => c.Value.maxScore)
+                        .Select(c => c.Value.songID)
+                        .ToList();
+
+                    originSongsIDs.AddRange(fillerSongs);
+
+                    originSongsIDs = originSongsIDs
+                        .Distinct()         //Remove Duplicates
+                        .Take(targetFillers)
+                        .ToList();
+
+                    songSuggest.log?.WriteLine("Liked + Played + Filler Songs in list: " + originSongsIDs.Count());
+                }
+
+                originSongsIDs = originSongsIDs
+                    .Take(targetCount)  //Try and get 50 or all liked whichever is larger
+                    .ToList();
+                songSuggest.log?.WriteLine("Final Songs in list: " + originSongsIDs.Count());
             }
-
-            originSongsIDs = originSongsIDs
-                                .Distinct()         //Remove Duplicates
-                                .Take(targetCount)  //Try and get 50 or all liked whichever is larger
-                                .ToList();
-
-            songSuggest.log?.WriteLine("Songs in list: " + originSongsIDs.Count());
-
             return originSongsIDs;
         }
 
-        //get 50 most accurate songs of top %songCount% for linking. (or up to 50/%songCount% Percent of unbanned played ranked songs rounded up if less than 50 are available.)
-        public List<String> BestPPandAccPlayedsongs(int songCount)
+        //Goal here is to get a good sample of a players songs that are not banned. The goal is try and find 50 candidates to represent a player.
+        //We filter out round up 25% worst scores (keeping at least 1) to allow progression on actual scores on lower song counts by filtering bad fits earlier
+        //Then we filter out the requested portion of low accuracy songs.
+        public List<String> SelectPlayedOriginSongs(int extraAccSongs)
         {
-            var filteredSongs = songSuggest.activePlayer.scores                                         //Look at players scores
-                .Where(c => !songSuggest.songBanning.IsPermaBanned(c.Key, BanLike.BanType.SongSuggest)) //Remove Perma Banned Songs
-                .OrderByDescending(c => c.Value.pp)                                                     //Order by pp
-                .Skip(settings.skipSongsCount)                                                          //TEST CODE ... Ignore X songs to make list easier.
-                .Take(songCount)                                                                        //Grab top songCount
-                .OrderByDescending(c => c.Value.accuracy);                                              //Sort by acc
-                
-            int targetSongCount = (int)Math.Ceiling(50.0/songCount * filteredSongs.Count());            //Finds originsongs to be either 50 or a percentage of 50/songCount !!!Potential BUG Rounding of doubles might give 51 instead of 50
-   
-            return filteredSongs.Take(targetSongCount)                                                  //Reduce the selections to target % or 50 (51)
-                .OrderByDescending(c => c.Value.pp)                                                     //Reorder by PP so worst PP are removed if liked songs are used (or 51 songs found)
-                .Select(c => c.Key)                                                                     //Get the songID
-                .ToList();                                                                              //Put them in a list
-        }
+            //Find available songs
+            var filteredSongs = suggestSM.PlayerScoresIDs()                                     //Grab songID's for songs matching the given Suggest Context from Source Manager
+                .Where(c => !songSuggest.songBanning.IsPermaBanned(c, BanType.SongSuggest))
+                .ToList();    //Remove Perma Banned Songs
 
-        //get 50 best rankedPercentile songs of top %songCount% for linking. (or up to 50/%songCount% Percent of unbanned played ranked songs rounded up if less than 50 are available.)
-        public List<String> BestPPandRankedPercentilePlayedsongs(int songCount)
-        {
-            var filteredSongs = songSuggest.activePlayer.scores                                         //Look at players scores
-                .Where(c => !songSuggest.songBanning.IsPermaBanned(c.Key, BanLike.BanType.SongSuggest)) //Remove Perma Banned Songs
-                .OrderByDescending(c => c.Value.pp)                                                     //Order by pp
-                .Take(songCount)                                                                        //Grab top songCount
-                .OrderBy(c => c.Value.rankPercentile);                                                  //Sort by rank percentile
+            //Find the songs to keep based on Score Value
+            int valueSongCount = filteredSongs.Count();
+            valueSongCount = valueSongCount * 3 / 4;        //Reduce the list to 75% best
+            if (valueSongCount == 0) valueSongCount = 1;    //If 1 is available, 1 should always be selected, but outside this goal is to reduce to 75% rounded down
 
-            int targetSongCount = (int)Math.Ceiling(50.0 / songCount * filteredSongs.Count());          //Finds originsongs to be either 50 or a percentage of 50/songCount !!!Potential BUG Rounding of doubles might give 51 instead of 50
+            //Find the target song count after removing accuracy adjustments
+            double percentToKeep = 1 - (50 / (50 + extraAccSongs));
+            int accSongCount = (int)Math.Ceiling(percentToKeep * valueSongCount);
 
-            return filteredSongs.Take(targetSongCount)                                                  //Reduce the selections to target % or 50 (51)
-                .OrderByDescending(c => c.Value.pp)                                                     //Reorder by PP so worst PP are removed if liked songs are used (or 51 songs found)
-                .Select(c => c.Key)                                                                     //Get the songID
-                .ToList();                                                                              //Put them in a list
+            //Get the songs by 
+            filteredSongs = filteredSongs
+                .OrderByDescending(c => suggestSM.PlayerScoreValue(c))      //Order by score value
+                .Take(valueSongCount)                                       //Grab 75% best of scores
+                .Take(50 + extraAccSongs)                                   //Grab up to the portion that is default cap before acc sorting (50 to 150 songs depending on extraSongCount)
+                .OrderByDescending(c => suggestSM.PlayerAccuracyValue(c))   //Sort by acc
+                .Take(accSongCount)                                         //Grab the goal of acc related songs (relevant if less than 50 should be kept to keep a matching % removed instead)
+                .Take(50)                                                   //Reduce the (50-150) selection to 50 best acc songs (default reduction so worst acc is removed)   
+                .OrderByDescending(c => suggestSM.PlayerScoreValue(c))      //Reorder back to Score Value (relevant only if player got other prioritised songs like Liked songs before reducing suggest list at higher levels)
+                .ToList();
+
+            foreach (var songID in filteredSongs)
+            {
+                if (songSuggest.songLibrary.songs.ContainsKey(songID))
+                {
+                    var song = songSuggest.songLibrary.songs[songID];
+                    songSuggest.log?.WriteLine($"{song.name} ({songID} - {song.GetDifficultyText()}) Score: {suggestSM.PlayerScoreValue(songID)}");
+                }
+                else songSuggest.log?.WriteLine($"{songID}");
+            }
+
+            //Returns the found songs.
+            return filteredSongs;
         }
 
         //Sets the Origin Endpoint collection up, and links all the SongLinks to the Origin points
@@ -279,40 +339,40 @@ namespace Actions
             //Prepare the starting endpoints for the above selected songs and tie them to the origin collection, ignoring the player itself.
 
             //Reset link count for new generation.
+            linkedSongs = 0;
             linkedPlayers = 0;
+            var scoreBoard = suggestSM.Leaderboard();
 
-            foreach (Top10kPlayer player in top10kPlayers.top10kPlayers.Where(player => player.id != songSuggest.activePlayer.id && player.rank >= settings.rankFrom && player.rank <= settings.rankTo))
+            foreach (Top10kPlayer scoreBoardPlayer in scoreBoard.top10kPlayers.Where(c => c.id != songSuggest.activePlayer.id))
             {
-                //Loop all preselected origin songs on a player
-                foreach (Top10kScore playerSong in player.top10kScore.Where(playerSong => originSongs.endPoints.ContainsKey(playerSong.songID)))
+                //Loop the Scoreboard Players songs that are also among preselected songs.
+                foreach (Top10kScore scoreBoardSong in scoreBoardPlayer.top10kScore.Where(c => originSongs.endPoints.ContainsKey(c.songID)))
                 {
-                    //Only check if score is high enough if played actually played the song.
-                    bool playedSong = songSuggest.activePlayer.scores.ContainsKey(playerSong.songID);
-                    bool validSong = playedSong ? songSuggest.activePlayer.scores[playerSong.songID].pp * betterAccCap > playerSong.pp && songSuggest.activePlayer.scores[playerSong.songID].pp * worseAccCap < playerSong.pp : true;
-
-                    //bool validSong = playedSong ? songSuggest.activePlayer.scores[playerSong.songID].pp * betterAccCap > playerSong.pp : true;
-                    
+                    //Only check if score is high enough if player actually played the song (songValue > 0) as player may not have played Liked or Fillers in the active scoreboard
+                    double playerSongValue = suggestSM.PlayerScoreValue(scoreBoardSong.songID);
+                    bool validSong = playerSongValue != 0 ? playerSongValue * betterAccCap > scoreBoardSong.pp && playerSongValue * worseAccCap < scoreBoardSong.pp : true;
 
                     //Skip link if the targetsongs PP is too high compared to original players score
-                    if (validSong) // && songSuggest.activePlayer.scores[playerSong.songID].pp / betterAccCap < playerSong.pp)
+                    if (validSong)
                     {
                         //Each player can be counted 50 times, as there is 50 songs to link from.
                         linkedPlayers++;
                         //Loop songs again for endpoints, skipping linking itself, as well as ignoreSongs
-                        foreach (Top10kScore suggestedSong in player.top10kScore.Where(suggestedSong => suggestedSong.rank != playerSong.rank && !ignoreSongs.Contains(suggestedSong.songID)))
+                        foreach (Top10kScore suggestedSong in scoreBoardPlayer.top10kScore.Where(suggestedSong => suggestedSong.rank != scoreBoardSong.rank && !ignoreSongs.Contains(suggestedSong.songID)))
                         {
+                            linkedSongs++;
                             SongLink songLink = new SongLink
                             {
-                                playerID = player.id,
-                                originSongScore = playerSong,
+                                playerID = scoreBoardPlayer.id,
+                                originSongScore = scoreBoardSong,
                                 targetSongScore = suggestedSong
                             };
-                            originSongs.endPoints[playerSong.songID].songLinks.Add(songLink);
+                            originSongs.endPoints[scoreBoardSong.songID].songLinks.Add(songLink);
                         }
                     }
                 }
                 percentDoneCalc++;
-                songSuggestCompletion = (0.0 + (4.0 * percentDoneCalc / (settings.rankTo - settings.rankFrom))) / 6.0;
+                songSuggestCompletion = (0.0 + (4.0 * percentDoneCalc / 10000)) / 6.0;
             }
 
             //Create the suggested songs Endpoints
@@ -437,7 +497,7 @@ namespace Actions
         {
             //Skip this if enough links. (It is possible that removing the low accuracy filter ended up giving enough links that song
             //suggestions are good, even if the players acc is so low that the Better Acc filter was triggered).
-            if (linkedPlayers < minPlayerLinks)
+            if (linkedPlayers < minSongLinks)
             {
                 songSuggest.log?.WriteLine("Low Linking found");
                 //Enable the warning for additonal steps to ensure enough songs.
@@ -455,15 +515,15 @@ namespace Actions
                 //Remove songs without 3 plays (The songs scores could be random values, so rather remove them for now)
 
                 sortedSuggestions = sortedSuggestions
-                    .Where(c => songSuggest.top10kPlayers.top10kSongMeta[c].minScore < 1.2 * playerMaxPP
-                    && songSuggest.top10kPlayers.top10kSongMeta[c].maxScore < 1.5 * playerMaxPP
-                    && songSuggest.top10kPlayers.top10kSongMeta[c].count >= 3)
+                    .Where(c => songSuggest.scoreSaberScoreBoard.top10kSongMeta[c].minScore < 1.2 * playerMaxPP
+                    && songSuggest.scoreSaberScoreBoard.top10kSongMeta[c].maxScore < 1.5 * playerMaxPP
+                    && songSuggest.scoreSaberScoreBoard.top10kSongMeta[c].count >= 3)
                     .ToList();
 
                 songSuggest.log?.WriteLine("Songs left after filtering: {0}", sortedSuggestions.Count());
 
                 //Find all songs with at least 3 plays, and sort them by MaxPP scores, so easiest is first, and remove already approved songs
-                List<String> remainingSongs = songSuggest.top10kPlayers.top10kSongMeta
+                List<String> remainingSongs = songSuggest.scoreSaberScoreBoard.top10kSongMeta
                     .Where(c => c.Value.count >= 3)
                     .OrderBy(c => c.Value.maxScore)
                     .Select(c => c.Value.songID)
@@ -499,14 +559,21 @@ namespace Actions
 
             //Ignore recently/all played songs
             //Add either all played songs
+            var playedSongs = suggestSM.PlayerScoresIDs();
+
             if (ignoreDays == -1)
             {
-                ignoreSongs.AddRange(songSuggest.activePlayer.scores.Keys);
+                ignoreSongs.AddRange(playedSongs);
+                //ignoreSongs.AddRange(songSuggest.activePlayer.scores.Keys);
             }
             //Or the songs only played within a given time periode
             else
             {
-                ignoreSongs.AddRange(songSuggest.activePlayer.GetYoungerThan(ignoreDays));
+                var filteredSongs = playedSongs
+                    .Where(song => (DateTime.UtcNow - suggestSM.PlayerScoreDate(song)).TotalDays < ignoreDays)
+                    .ToList();
+
+                ignoreSongs.AddRange(filteredSongs);
             }
 
             //Add the banned songs to the ignoresong list if not already on it.
@@ -568,7 +635,7 @@ namespace Actions
 
                     String songInfo = songName + " (" + songDifc + " - " + songID + ")";
 
-                    double globalPP = songSuggest.top10kPlayers.top10kSongMeta[songID].maxScore;
+                    double globalPP = songSuggest.scoreSaberScoreBoard.top10kSongMeta[songID].maxScore;
 
                     ////***test PP -> Distance
                     double playerPP = songSuggest.activePlayer.GetScore(songID);
@@ -584,20 +651,20 @@ namespace Actions
                     songSuggest.log?.WriteLine("#:{0}\tDistance:{3}\tStyle :{4}\tOW:{5}\tActual:{2}\t{1}", rank, songInfo, actualPlayerRankTxt, ppRank, styleRank, owRank);
                 }
 
-            //    rank = 0;
-            //    foreach (String songID in originSongIDs)
-            //    {
-            //        rank++;
+                //    rank = 0;
+                //    foreach (String songID in originSongIDs)
+                //    {
+                //        rank++;
 
-            //        String songName = songSuggest.songLibrary.GetName(songID);
-            //        String songDifc = songSuggest.songLibrary.GetDifficultyName(songID);
+                //        String songName = songSuggest.songLibrary.GetName(songID);
+                //        String songDifc = songSuggest.songLibrary.GetDifficultyName(songID);
 
-            //        String songInfo = songName + " (" + songDifc + " - " + songID + ")";
+                //        String songInfo = songName + " (" + songDifc + " - " + songID + ")";
 
-            //        songSuggest.log?.WriteLine("#:{0,3}   {1}",rank,songInfo);
+                //        songSuggest.log?.WriteLine("#:{0,3}   {1}",rank,songInfo);
 
-            //    }
-            
+                //    }
+
             }
         }
     }
@@ -660,9 +727,9 @@ namespace Actions
             if (!calculated) return 1;
 
             //Since we start with 0 index, the max song is 1 less than the elements.
-            double maxCount = songData.Count()-1;
+            double maxCount = songData.Count() - 1;
             //For the calculations we use the 0 index rank, so we get a 0 to 1 spread.
-            double songRank = songData[songID].songRank -1;
+            double songRank = songData[songID].songRank - 1;
             //A value from 0 to 1
             double unfilteredStrength = songRank / maxCount;
             //Reduce the spread with the filterstrength.
@@ -679,10 +746,153 @@ namespace Actions
         public String songID;
         //Rank of song starting with 1 for best
         public int songRank;
-        
+
     }
     public class FilterManager
     {
 
+    }
+
+    //--- Handling of data sources ---
+    public class SuggestSourceManager
+    {
+        public SongSuggest songSuggest { get; set; }
+        public PlayerScoreSource PlayerScoreContext { get; set; } = PlayerScoreSource.ScoreSaber;
+        public LeaderboardScoreSource LeaderboardContext { get; set; } = LeaderboardScoreSource.ScoreSaber;
+
+        public List<String> PlayerScoresIDs()
+        {
+            switch (PlayerScoreContext)
+            {
+                case PlayerScoreSource.ScoreSaber:
+                    return songSuggest.activePlayer.scores.Values
+                        .Select(c => c.songID)
+                        .Intersect(songSuggest.songLibrary.GetAllRankedSongIDs(LeaderboardSongCategory()))
+                        .ToList();
+                case PlayerScoreSource.LocalScores:
+                    return songSuggest.localScores.GetScores(LeaderboardSongCategory());
+            }
+            
+            //Unknown handling detected
+            throw new InvalidOperationException($"Unknown PlayerScoreIDs Source found: {PlayerScoreContext}");
+        }
+
+        //Returns the value of a songID .. if song is unknown 0 is returned.
+        public double PlayerScoreValue(string songID)
+        {
+
+            //Return recorded scores
+            switch (PlayerScoreContext)
+            {
+                case PlayerScoreSource.ScoreSaber:
+                    if (!songSuggest.activePlayer.scores.ContainsKey(songID)) return 0;
+                    return songSuggest.activePlayer.scores[songID].pp;
+            }
+
+            double accuracy = PlayerAccuracyValue(songID);
+            return CalculatedScore(songID, accuracy);
+        }
+
+        //Returns the acc value of a song, if song .. if song is unknown 0 is returned.
+        public double PlayerAccuracyValue(string songID)
+        {
+            switch (PlayerScoreContext)
+            {
+                case PlayerScoreSource.ScoreSaber:
+                    if (!songSuggest.activePlayer.scores.ContainsKey(songID)) return 0;
+                    return songSuggest.activePlayer.scores[songID].accuracy;
+                case PlayerScoreSource.LocalScores:
+                    return songSuggest.localScores.GetAccuracy(songID);
+            }
+
+            //Unknown handling detected
+            throw new InvalidOperationException($"Unknown PlayerAccuracyValue Source found: {PlayerScoreContext}");
+        }
+
+        //Returns the Time of when a score was set.
+        internal DateTime PlayerScoreDate(string songID)
+        {
+            switch (PlayerScoreContext)
+            {
+                case PlayerScoreSource.ScoreSaber:
+                    if (!songSuggest.activePlayer.scores.ContainsKey(songID)) return DateTime.MinValue;
+                    return songSuggest.activePlayer.scores[songID].timeSet;
+                case PlayerScoreSource.LocalScores:
+                    return songSuggest.localScores.GetTimeSet(songID);
+            }
+
+            //Unknown handling detected
+            throw new InvalidOperationException($"Unknown PlayerScoreDate Source found: {PlayerScoreContext}");
+        }
+
+        public List<String> LikedSongs()
+        {
+            var allLikedSongs = songSuggest.songLiking.GetLikedIDs();
+            var allSourceSongs = songSuggest.songLibrary.GetAllRankedSongIDs(LeaderboardSongCategory());
+
+            return allLikedSongs.Intersect(allSourceSongs).ToList();
+        }
+
+
+        //Returns the calculated value of a songID .. unknown songs got 0 accuracy so 0 is returned.
+        public double CalculatedScore(string songID, double accuracy)
+        {
+            switch (LeaderboardContext)
+            {
+                case LeaderboardScoreSource.ScoreSaber:
+                    double starRating = songSuggest.songLibrary.songs[songID].starScoreSaber;
+                    return ScoreSaberCurve.PP(accuracy, starRating);
+                case LeaderboardScoreSource.AccSaber:
+                    double complexityRating = songSuggest.songLibrary.songs[songID].complexityAccSaber;
+                    return AccSaberCurve.AP(accuracy, complexityRating);
+            }
+
+            //Unknown handling detected
+            throw new InvalidOperationException($"Unknown CalculatedScore Source found: {LeaderboardContext}");
+        }
+
+        public Top10kPlayers Leaderboard()
+        {
+            switch (LeaderboardContext)
+            {
+                case LeaderboardScoreSource.ScoreSaber:
+                    return songSuggest.scoreSaberScoreBoard;
+                case LeaderboardScoreSource.AccSaber:
+                    return songSuggest.accSaberScoreBoard;
+
+            }
+            
+            throw new InvalidOperationException($"Unknown ScoreBoardTopPlays Source found: {LeaderboardContext}");
+        }
+
+
+        //Returns the enums of the related ranked songs in the given Scoreboard.
+        public SongCategory LeaderboardSongCategory()
+        {
+            switch (LeaderboardContext)
+            {
+                case LeaderboardScoreSource.ScoreSaber:
+                    return SongCategory.ScoreSaber;
+
+                case LeaderboardScoreSource.AccSaber:
+                    return SongCategory.AccSaberTrue | SongCategory.AccSaberStandard | SongCategory.AccSaberTech;
+            }
+            throw new InvalidOperationException($"Unknown LeaderboardSongCategory Source found: {LeaderboardContext}");
+        }
+
+    }
+
+    public enum PlayerScoreSource
+    {
+        ScoreSaber,
+        LocalScores,
+        BeatLeader
+    }
+
+    public enum LeaderboardScoreSource
+    {
+        ScoreSaber,
+        AccSaber,
+        BeatLeader
     }
 }

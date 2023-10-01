@@ -12,7 +12,8 @@ namespace SongLibraryNS
         public String hash { get; set; }
         public String difficulty { get; set; }
         public SongCategory songCategory { get; set; }
-        public double starBeatSaber { get; set; }
+        [JsonProperty("starBeatSaber")]
+        public double starScoreSaber { get; set; }
         public double complexityAccSaber { get; set; }
 
         public Song()

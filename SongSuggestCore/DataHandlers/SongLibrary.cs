@@ -21,7 +21,7 @@ namespace SongLibraryNS
                 scoreSaberID = scoreSaberID,
                 name = name,
                 hash = hash,
-                starBeatSaber = starBeatSaber,
+                starScoreSaber = starBeatSaber,
                 difficulty = difficulty
             };
             AddSong(newSong);
@@ -144,28 +144,6 @@ namespace SongLibraryNS
             return foundSong;
         }
 
-        ////Adds a new library to the current Libary (used when new Web Data is downloaded)
-        //public void AddLibrary(List<Song> songs)
-        //{
-        //    foreach (Song song in songs)
-        //    {
-        //        //Check if song is known
-        //        if (this.songs.ContainsKey(song.scoreSaberID))
-        //        {
-        //            //Replace the stored values with the new songs info (if changed).
-        //            ReplaceSong(song);
-        //        }
-        //        else
-        //        {
-        //            //Add unknown songs
-        //            AddSong(song);
-        //        }
-        //    }
-
-        //    //Save if any changes was made
-        //    if (Updated()) Save();
-        //}
-
         //Removes songs that are not actively linked to a supported format
         public void RemoveSongsWithoutSongCategories()
         {
@@ -182,33 +160,18 @@ namespace SongLibraryNS
         }
 
         //Replace a song in the songs list if there has been an update in any status.
-        private void ReplaceSong(Song song)
+        public void ReplaceSong(Song song)
         {
-            songs[song.scoreSaberID] = song;
-            songSuggest.log?.WriteLine($"Updated: {song.scoreSaberID} As new song values was given.");
-            updated = true;
-
-            //var librarySong = songs[song.scoreSaberID];
-
-            //bool identical = true;
-
-            //Type type = typeof(Song);
-            //PropertyInfo[] properties = type.GetProperties();
-
-            //foreach (PropertyInfo property in properties)
-            //{
-            //    object value1 = property.GetValue(song);
-            //    object value2 = property.GetValue(librarySong);
-
-            //    if (!value1.Equals(value2)) identical = false;
-            //}
-
-            //if (!identical)
-            //{
-            //    songSuggest.log?.WriteLine($"Updated: {song.scoreSaberID} As new song values was given.");
-            //    songs[song.scoreSaberID] = song;
-            //    updated = true;
-            //}
+            if (songs.ContainsKey(song.scoreSaberID))
+            {
+                songs[song.scoreSaberID] = song;
+                songSuggest.log?.WriteLine($"Updated: {song.scoreSaberID} As new song values was given.");
+                updated = true;
+            }
+            else
+            {
+                AddSong(song);
+            }
         }
 
         //Activate SongType/s
@@ -263,15 +226,26 @@ namespace SongLibraryNS
         }
 
         //Returns True/False if hte song is recorded with an active SongCategory
-        public bool HasSongCategory(String songID)
+        public bool HasAnySongCategory(String songID)
         {
             return (songs.ContainsKey(songID) && songs[songID].songCategory != 0);
         }
 
-        //Returns True/False if hte song is recorded with an active SongCategory
-        public bool HasSongCategory(String hash, String difficulty)
+        //Returns True/False if the song is recorded with an active SongCategory
+        public bool HasAnySongCategory(String hash, String difficulty)
         {
-            return HasSongCategory(GetID(hash,difficulty));
+            return HasAnySongCategory(GetID(hash,difficulty));
+        }
+
+        public bool HasAllSongCategory(string songID, SongCategory category)
+        {
+            if (!songs.ContainsKey(songID)) return false;
+            return (songs[songID].songCategory & category) == category;
+        }
+        public bool HasAnySongCategory(string songID, SongCategory category)
+        {
+            if (!songs.ContainsKey(songID)) return false;
+            return (songs[songID].songCategory & category) > 0;
         }
 
         //Return IDs of all known ranked songs
