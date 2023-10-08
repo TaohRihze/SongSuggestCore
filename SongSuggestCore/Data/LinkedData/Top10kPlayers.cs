@@ -10,6 +10,7 @@ namespace LinkedData
     {
         public const String FormatVersion = "1.0";
         public SongSuggest songSuggest {get;set;}
+        public String FormatName { get; set; }
         public List<Top10kPlayer> top10kPlayers = new List<Top10kPlayer>();
         public SortedDictionary<String,Top10kSongMeta> top10kSongMeta = new SortedDictionary<String,Top10kSongMeta>();
 
@@ -31,9 +32,9 @@ namespace LinkedData
                 foreach (Top10kScore score in player.top10kScore)
                 {
                     //Add any missing songs.
-                    if(!top10kSongMeta.ContainsKey(score.songID))
+                    if (!top10kSongMeta.ContainsKey(score.songID))
                     {
-                        top10kSongMeta.Add(score.songID, new Top10kSongMeta{songID = score.songID});
+                        top10kSongMeta.Add(score.songID, new Top10kSongMeta { songID = score.songID });
                     }
                     Top10kSongMeta songMeta = top10kSongMeta[score.songID];
                     songMeta.count++;
@@ -49,7 +50,7 @@ namespace LinkedData
             {
                 songMeta.averageScore = songMeta.totalScore / songMeta.count;
             }
-            songSuggest.log?.WriteLine("*Total Songs*: " + top10kSongMeta.Count);
+            songSuggest.log?.WriteLine($"*Total Songs*: {top10kSongMeta.Count} in {FormatName}");
         }
 
         public void Add(String id, String name, int rank)

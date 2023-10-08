@@ -42,6 +42,7 @@ namespace LocalScores
             var tmpScore = new LocalPlayerScore()
             {
                 SongID = songID,
+                SongName = songSuggest.songLibrary.songs[songID].name,
                 Accuracy = accuracy,
                 TimeSet = DateTime.UtcNow
             };

@@ -21,8 +21,8 @@ namespace WebDownloading
         private WebClient client = new WebClient();
         private JsonSerializerSettings serializerSettings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
 
-        //Throttler for Score Saber calls, for now we keep it public, later we can add it to internal calls that use Score Saber calls.
-        public Throttler ssThrottler = new Throttler();
+        //Throttlers
+        private Throttler _ScoreSaberThrottler = new Throttler();
 
         public WebDownloader()
         {
@@ -35,6 +35,7 @@ namespace WebDownloading
         {
             try
             {
+                _ScoreSaberThrottler.Call();
                 //https://scoresaber.com/api/player/76561197993806676/scores?limit=20&sort=recent&page=2
                 String scoresJSON = client.DownloadString("https://scoresaber.com/api/player/" + id + "/scores?limit=" + count + "&sort=" + sorting + "&page=" + page);
                 return JsonConvert.DeserializeObject<PlayerScoreCollection>(scoresJSON, serializerSettings);
@@ -52,6 +53,7 @@ namespace WebDownloading
         {
             try
             {
+                _ScoreSaberThrottler.Call();
                 //https://scoresaber.com/api/players?page=2
                 String playersJSON = client.DownloadString("https://scoresaber.com/api/players?page=" + page);
                 return JsonConvert.DeserializeObject<PlayerCollection>(playersJSON, serializerSettings);
@@ -69,6 +71,7 @@ namespace WebDownloading
         {
             try
             {
+                _ScoreSaberThrottler.Call();
                 //https://scoresaber.com/api/leaderboard/by-hash/E42BCDF50EA1F961CB8CEFE502E82806866F6479/info?difficulty=9&gameMode=SoloStandard
                 String songInfo = client.DownloadString("https://scoresaber.com/api/leaderboard/by-hash/" + hash + "/info?difficulty=" + difficulty + "&gameMode=SoloStandard");
                 songSuggest.log?.WriteLine("Unknown Song found and downloaded");
@@ -86,6 +89,7 @@ namespace WebDownloading
         {
             try
             {
+                _ScoreSaberThrottler.Call();
                 //https://scoresaber.com/api/leaderboard/by-id/348871/info
                 String songInfo = client.DownloadString("https://scoresaber.com/api/leaderboard/by-id/" + songID + "/info");
                 return JsonConvert.DeserializeObject<LeaderboardInfo>(songInfo, serializerSettings);
@@ -102,6 +106,7 @@ namespace WebDownloading
         {
             try
             {
+                _ScoreSaberThrottler.Call();
                 //https://scoresaber.com/api/leaderboards?ranked=true&page=1
                 String songInfo = client.DownloadString("https://scoresaber.com/api/leaderboards?ranked=true&page=" + page);
                 return JsonConvert.DeserializeObject<LeaderboardInfoCollection>(songInfo, serializerSettings);
@@ -118,6 +123,7 @@ namespace WebDownloading
         {
             try
             {
+                _ScoreSaberThrottler.Call();
                 //https://scoresaber.com/api/leaderboard/by-id/348871/scores?page=1
                 String songInfo = client.DownloadString("https://scoresaber.com/api/leaderboard/by-id/" + songID + "/scores?page=" + page);
                 return JsonConvert.DeserializeObject<ScoreCollection>(songInfo, serializerSettings);
@@ -134,6 +140,7 @@ namespace WebDownloading
         {
             try
             {
+                _ScoreSaberThrottler.Call();
                 //https://scoresaber.com/api/leaderboard/by-id/348871/scores?page=1
                 String songInfo = client.DownloadString("https://scoresaber.com/api/leaderboard/by-id/" + songID + "/scores?page=" + page + "&countries=" + countryCode);
                 return JsonConvert.DeserializeObject<ScoreCollection>(songInfo, serializerSettings);
@@ -225,65 +232,9 @@ namespace WebDownloading
 
             return JsonConvert.DeserializeObject<List<Top10kPlayer>>(downloadString, serializerSettings);
         }
-
-
-        //public void UpdateLinkData()
-        //{
-        //    songSuggest.status = "Downloading Files.meta";
-        //    //Let us check meta for updates.
-        //    string metaWebPath = "https://raw.githubusercontent.com/HypersonicSharkz/SmartSongSuggest/master/TaohSongSuggest/Configuration/InitialData/Files.meta";
-        //    string metaText = client.DownloadString(metaWebPath);
-
-        //    songSuggest.log?.WriteLine(metaText);
-
-        //    FilesMeta filesMetaWeb = JsonConvert.DeserializeObject<FilesMeta>(metaText, serializerSettings);
-        //    FilesMeta filesMetaLocal = songSuggest.fileHandler.LoadFilesMeta();
-
-        //    //Check if local version is same as server version, else download the server version.
-        //    //Also pulls an update of song library to add to local library.
-        //    //Do not like that filepaths are so deep in data. Might need a better way of handling it.
-        //    if (filesMetaWeb.top10kUpdated != filesMetaLocal.top10kUpdated)
-        //    {
-        //        //Top 10k Download
-        //        //where to get the files from and where to save it.
-        //        string webPath = "https://raw.githubusercontent.com/HypersonicSharkz/SmartSongSuggest/master/TaohSongSuggest/Configuration/InitialData/Top10KPlayers.json";
-        //        string filePath = songSuggest.fileHandler.filePathSettings.top10kPlayersPath + "tmp10k.json";
-        //        string currentJSONPath = songSuggest.fileHandler.filePathSettings.top10kPlayersPath + "Top10KPlayers.json";
-
-        //        //Download the file to a tmp file, and when done replace current file.
-        //        songSuggest.status = "Downloading Player Scores";
-        //        client.DownloadFile(webPath, filePath);
-        //        //It is fine to delete a file that is not there, so no need to check if it is there first.
-        //        songSuggest.status = "Replacing Player Scores";
-        //        File.Delete(currentJSONPath);
-        //        File.Move(filePath, currentJSONPath);
-
-        //        //Song Library pull
-        //        webPath = "https://raw.githubusercontent.com/HypersonicSharkz/SmartSongSuggest/master/TaohSongSuggest/Configuration/InitialData/SongLibrary.json";
-        //        filePath = songSuggest.fileHandler.filePathSettings.songLibraryPath + "tmplib.json";
-        //        //Download the file to a tmp file, add contents, and delete tmp when done.
-        //        songSuggest.status = "Downloading Song Library";
-        //        client.DownloadFile(webPath, filePath);
-        //        songSuggest.status = "Combining Song Libraries";
-        //        songSuggest.fileHandler.AddSongLibrary(filePath);
-        //        songSuggest.status = "Removing Temporary Library";
-        //        File.Delete(filePath);
-
-
-        //        songSuggest.log?.WriteLine("Web: {0} - Files: {1}", filesMetaWeb.GetLargeVersion(), filesMetaLocal.GetLargeVersion());
-        //        //Check if the data require a profile reset on next update of the activeplayer
-        //        if (filesMetaWeb.GetLargeVersion() != filesMetaLocal.GetLargeVersion())
-        //        {
-        //            songSuggest.fileHandler.TogglePlayerRefresh();
-        //        }
-
-        //        //save related Files.meta
-        //        songSuggest.fileHandler.SaveFilesMeta(filesMetaWeb);
-        //    }
-        //}
     }
 
-    public class Throttler
+    internal class Throttler
     {
         int calls = 0;
         DateTime periodStart = DateTime.UtcNow;

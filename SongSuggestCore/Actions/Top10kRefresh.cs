@@ -165,7 +165,7 @@ namespace Actions
             //FileHandler fileHandler = songSuggest.fileHandler;
             WebDownloader webDownloader = songSuggest.webDownloader;
             SongLibrary songLibrary = songSuggest.songLibrary;
-            Throttler throttler = webDownloader.ssThrottler;
+            //Throttler throttler = webDownloader.ssThrottler;
             
             top10kPlayers = new Top10kPlayers() { songSuggest = songSuggest };
 
@@ -181,7 +181,6 @@ namespace Actions
             int candidatePage = 1;
 
 
-            throttler.Call();
             List<Player> candidates = webDownloader.GetPlayers(candidatePage++).players.ToList();
             songSuggest.log?.WriteLine("Starting to Download Users");
 
@@ -194,7 +193,6 @@ namespace Actions
                 //Grab a new batch of players if out of players
                 if (candidates.Count() == 0)
                 {
-                    throttler.Call();
                     candidates = webDownloader.GetPlayers(candidatePage++).players.ToList();
                 }
 
@@ -211,7 +209,6 @@ namespace Actions
                 };
 
                 //Lets grab the top 30 scores of that player and get them added
-                throttler.Call();
                 PlayerScoreCollection playerScoreCollection = webDownloader.GetScores(currentPlayer.id, "top", 30, 1);
 
                 //***These failed a few times, lets try this again, and if it fails once more, log this failure***

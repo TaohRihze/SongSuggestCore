@@ -11,7 +11,7 @@ using SongSuggestNS;
 using Settings;
 using PlaylistJson;
 using LocalScores;
-
+using AccSaberData;
 
 namespace FileHandling
 {
@@ -214,6 +214,18 @@ namespace FileHandling
         public void SaveFilesFormatVersions(FileFormatVersions versions)
         {
             File.WriteAllText(filePathSettings.filesDataPath + "FileFormatVersions.json", JsonConvert.SerializeObject(versions));
+        }
+
+        internal void SaveAccSaberSongs(List<SongData> songs)
+        {
+            File.WriteAllText(filePathSettings.rankedData + "AccSaberRaw.json", JsonConvert.SerializeObject(songs));
+        }
+
+        public List<SongData> LoadAccSaberSongs()
+        {
+            if (!File.Exists(filePathSettings.rankedData + "AccSaberRaw.json")) SaveAccSaberSongs(new List<SongData>());
+            String fileDataString = File.ReadAllText(filePathSettings.rankedData + "AccSaberRaw.json");
+            return JsonConvert.DeserializeObject<List<SongData>>(fileDataString, serializerSettings);
         }
     }
 }

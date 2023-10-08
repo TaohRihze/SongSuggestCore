@@ -38,7 +38,7 @@ namespace SongSuggestNS
         public LastRankedSuggestions lastSuggestions { get; set; }
 
         //Boolean set to true if the quality of the found songs was not high enough
-        //e.g. Had to remove the betterAcc and/or songs was missing from generating 50 suggestions.
+        //e.g. Had to remove the betterAcc and/or songs was missing from generating originSongsCount suggestions.
         public Boolean lowQualitySuggestions { get; set; } = false;
 
         //Log Details Target (null means it is off), else set the writer here.
@@ -94,9 +94,11 @@ namespace SongSuggestNS
             status = "Preparing Link Data";
             //Load Link Data
             scoreSaberScoreBoard = new Top10kPlayers { songSuggest = this };
+            scoreSaberScoreBoard.FormatName = "Score Saber";
             scoreSaberScoreBoard.Load("Top10KPlayers");
 
             accSaberScoreBoard = new Top10kPlayers { songSuggest = this };
+            accSaberScoreBoard.FormatName = "Acc Saber";
             accSaberScoreBoard.Load("AccSaberLeaderboardData");
 
             status = "Checking loaded data for new Online Files";
@@ -203,7 +205,7 @@ namespace SongSuggestNS
         public void GenerateSongSuggestions(SongSuggestSettings settings)
         {
             //Refresh Player Data (Skip if test user ID -100)
-            activePlayerID = settings.scoreSaberID;
+            activePlayerID = settings.ScoreSaberID;
             if (activePlayerID != "-100") RefreshActivePlayer();
 
             //Create the Song Suggestion (so once the creation has been made additional information can be kept and loaded from it.
