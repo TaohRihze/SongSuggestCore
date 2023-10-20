@@ -11,6 +11,7 @@ using System.ComponentModel.Design;
 using SongLibraryNS;
 using WebDownloading;
 using LinkedData;
+using Settings;
 
 namespace AccSaberData
 {
@@ -23,7 +24,7 @@ namespace AccSaberData
         public SongData Song { get; set; }
         [JsonIgnore]
         public AccPlayer Player { get; set; }
-        public double Accuracy => (double)Points/Song.MaxScore;
+        public double Accuracy => (double)Points / Song.MaxScore;
     }
 
     public class AccPlayer
@@ -82,31 +83,35 @@ namespace AccSaberData
         public void Refresh(SongSuggest songSuggest, DateTime obsoletePoint)
         {
             //If no songs have been set as targets, things are likely an error, lets treat it as such. (just call .Clear if all should be removed)
-            if (targetSongsIDs.Count == 0) 
+            if (targetSongsIDs.Count == 0)
             {
-                songSuggest.log.WriteLine("No songs was given for refresh, use .Clear to remove all data instead, no action performed in refresh.");
-                return; 
+                songSuggest.log?.WriteLine("No songs was given for refresh, use .Clear to remove all data instead, no action performed in refresh.");
+                return;
             }
-            
+
             //Remove songs no longer in target list.
             songs = songs.Where(c => targetSongsIDs.Contains(c.SongID)).ToList();
+
+            songSuggest.log?.WriteLine($"Songs in Request: {songs.Count()}");
 
             //Get new songs and set their initial data.
             List<String> missingSongIDs = targetSongsIDs.Except(songs.Select(c => c.SongID)).ToList();
 
             //Prepare loop information and autosave timer.
-            int totalSongs = songs.Count();
             int currentSong = 0;
-            int songsMissingDataCount = songs.Where(c => c.PlayerScores.Count() == 0 || c.Updated < obsoletePoint).Count();
 
             int minuteSaveInterval = 2;
             Save();
-            songSuggest.log.WriteLine($"Saved");
+            songSuggest.log?.WriteLine($"Saved");
             DateTime lastSave = DateTime.UtcNow;
 
+
+            int missingSongIDsCount = missingSongIDs.Count();
+            songSuggest.log?.WriteLine($"Songs missing SongData: {missingSongIDsCount}");
             //Loop missing songs and add song entry
             foreach (var songID in missingSongIDs)
             {
+                if (currentSong % 10 == 0) songSuggest.log?.WriteLine($"Getting Song Data: ({currentSong}/{missingSongIDsCount})");
                 LeaderboardInfo board = songSuggest.webDownloader.GetLeaderboardInfo(songID);
 
                 var tmpSong = new SongData()
@@ -119,50 +124,25 @@ namespace AccSaberData
 
                 if (tmpSong.MaxScore == 0)
                 {
-                    int comboLoss = 7245; //Amount of points lost potentially due to missing combo at start.
-
-                    //Insert Workaround for songs without max score
-                    switch (songID)
-                    {
-                        //Robber and bouqet     776 : 332538
-                        case "332538":
-                            tmpSong.MaxScore = 776 * 115 - comboLoss;
-                            break;
-                        //Tell me you know      396 : 463149                        
-                        case "463149":
-                            tmpSong.MaxScore = 396 * 115 - comboLoss;
-                            break;
-                        //All my love           260 : 418921
-                        case "418921":
-                            tmpSong.MaxScore = 260 * 115 - comboLoss;
-                            break;
-                        //What you know         242 : 568102
-                        case "568102":
-                            tmpSong.MaxScore = 242 * 115 - comboLoss;
-                            break;
-                        //Waiting for love      420 : 544407
-                        case "544407":
-                            tmpSong.MaxScore = 420 * 115 - comboLoss;
-                            break;
-                        //simulation            212 : 368917
-                        case "368917":
-                            tmpSong.MaxScore = 212 * 115 - comboLoss;
-                            break;
-                        default:
-                            songSuggest.log.WriteLine($"Song has no maxScore, nor known alternate: {songID}");
-                            break;
-                    }
+                    tmpSong.MaxScore = ManualData.SongMaxScore(songID, songSuggest);
                 }
                 songs.Add(tmpSong);
+                currentSong++;
+
             }
 
+            //Set data for looping the songs that are missing song data updates.
+            List<SongData> songsMissingData = songs.Where(c => c.PlayerScores.Count() == 0 || c.Updated < obsoletePoint).ToList();
+            int songsMissingDataCount = songsMissingData.Count();
+            currentSong = 0;
+
             //Loop songs and update if needed.
-            foreach (var song in songs)
+            foreach (var song in songsMissingData)
             {
                 string songID = song.SongID;
                 string name = songSuggest.songLibrary.songs[songID].name;
 
-                songSuggest.log.WriteLine($"Starting Song: {songID} - {name}.");
+                songSuggest.log?.WriteLine($"Starting Song: {songID} - {name}.");
                 //reset the Complexity
                 song.Complexity = songSuggest.songLibrary.songs[song.SongID].complexityAccSaber;
 
@@ -171,7 +151,7 @@ namespace AccSaberData
                 {
                     //Get Song meta from web
                     LeaderboardInfo songMeta = songSuggest.webDownloader.GetLeaderboardInfo(songID);
-                    
+
                     //12 scores per page, we need to figure out how many pages at most there is (just to give us an idea of how far we need to look and where we are,
                     //likely we will not need to parse them all to hit the 95% acc mark.
                     int totalPages = (int)Math.Ceiling((double)songMeta.plays / 12);
@@ -183,7 +163,7 @@ namespace AccSaberData
                     //Loop all pages until a lowscore is found.
                     while (page <= totalPages && !lowScoreFound)
                     {
-                        if (page%10 == 0) songSuggest.log.WriteLine($"Page: {page} / {totalPages} Last Acc: {lastAcc:0.000}%");
+                        if (page % 10 == 0) songSuggest.log?.WriteLine($"Page: {page} / {totalPages} Last Acc: {lastAcc:0.000}%");
                         ScoreCollection scorePage = songSuggest.webDownloader.GetLeaderboardScores(songID, page);
 
                         //Loop the 12 scores.
@@ -205,7 +185,7 @@ namespace AccSaberData
 
                             //Add it to the data
                             song.PlayerScores.Add(tmpScore);
-                            if (page%10==9) lastAcc = tmpScore.Accuracy*100;
+                            if (page % 10 == 9) lastAcc = tmpScore.Accuracy * 100;
                         }
                         page++;
                     }
@@ -214,22 +194,22 @@ namespace AccSaberData
                     song.Updated = DateTime.UtcNow;
                     songsMissingDataCount--;
                     TimeSpan timeUntilNextSave = lastSave.AddMinutes(minuteSaveInterval) - DateTime.UtcNow;
-                    string saveTimePrefix = timeUntilNextSave.CompareTo(0) < 0 ? "-" : "";
-                    songSuggest.log.WriteLine($"Status: {currentSong}/{totalSongs} songs checked. {songsMissingDataCount} songs still need data. {saveTimePrefix}{timeUntilNextSave:mm\\:ss} until next save.");
+                    string saveTimePrefix = timeUntilNextSave < TimeSpan.Zero ? "-" : "";
+                    songSuggest.log?.WriteLine($"Status: {currentSong}/{songsMissingDataCount + currentSong} songs checked. {songsMissingDataCount} songs still need data. {saveTimePrefix}{timeUntilNextSave:mm\\:ss} until next save.");
                 }
 
                 if ((DateTime.UtcNow - lastSave).TotalMinutes > minuteSaveInterval)
                 {
                     Save();
-                    songSuggest.log.WriteLine($"***Saved {DateTime.Now}***");
+                    songSuggest.log?.WriteLine($"***Saved {DateTime.Now}***");
                     lastSave = DateTime.UtcNow;
                 }
                 currentSong++;
 
             }
-            songSuggest.log.WriteLine($"Status: {currentSong}/{totalSongs} songs checked. {songsMissingDataCount} songs still need data");
+            songSuggest.log?.WriteLine($"Status: {currentSong}/{songsMissingDataCount} songs checked. {songsMissingDataCount} songs still need data");
             Save();
-            songSuggest.log.WriteLine($"All Songs Processed Saved");
+            songSuggest.log?.WriteLine($"All Songs Processed Saved");
         }
 
         //Clears stored Data to start a clean pull based on requested songs
@@ -238,46 +218,77 @@ namespace AccSaberData
             songs.Clear();
         }
 
+        //Suported ways to handle leaderboards score selection
+        public enum AccSaberLeaderboardSongSelection
+        {
+            Top20Scores,
+            BalancedLeaderboardSampling
+        }
+
+        //Default Leaderboard
         public void GenerateLeaderboard()
         {
-            foreach(var song in songs)
+            GenerateLeaderboard(AccSaberLeaderboardSongSelection.Top20Scores);
+        }
+
+        public void GenerateLeaderboard(AccSaberLeaderboardSongSelection songSelection)
+        {
+            foreach (var song in songs)
             {
-                foreach(var score in song.PlayerScores)
+                foreach (var score in song.PlayerScores)
                 {
                     string playerID = score.PlayerID;
-                    if(!players.ContainsKey(playerID))
+                    if (!players.ContainsKey(playerID))
                     {
-                        AccPlayer tmpPlayer = new AccPlayer() {PlayerID = playerID};
-                        players.Add(playerID,tmpPlayer);
+                        AccPlayer tmpPlayer = new AccPlayer() { PlayerID = playerID };
+                        players.Add(playerID, tmpPlayer);
                     }
                     score.Player = players[playerID];
                     score.Player.Scores.Add(score);
                 }
             }
 
-            //Remove players with less than 20 scores.
+            songSuggest.log?.WriteLine($"Players with any scores: {players.Count}");
+
+            //Remove players with less than 20 scores. (Initial player pruning)
+            players = new SortedDictionary<string, AccPlayer>(
+                players
+                    .Where(pair => pair.Value.Scores.Count >= 20)
+                    .ToDictionary(pair => pair.Key, pair => pair.Value)
+            );
+            songSuggest.log?.WriteLine($"Players with 20 scores before score selection: {players.Count}");
+
+
+            //Perform the selection of top 20 scores. (might return less than 20 scores)
+            switch (songSelection)
+            {
+                case AccSaberLeaderboardSongSelection.Top20Scores:
+                    Top20Scores(players);
+                    break;
+                case AccSaberLeaderboardSongSelection.BalancedLeaderboardSampling:
+                    //Try and get scores from as many leaderboards as possible, starting with a max of 8 samples from each.
+                    BalancedLeaderboardSampling(players.Values.ToList(), 8);
+                    break;
+            }
+
+            //Remove players with less than 20 scores (if the selection methode did not grab 20 scores).
             players = new SortedDictionary<string, AccPlayer>(
                 players
                     .Where(pair => pair.Value.Scores.Count >= 20)
                     .ToDictionary(pair => pair.Key, pair => pair.Value)
             );
 
-            //Reduce the scores to the 20 best score
-            foreach (var player in players.Values)
-            {
-                player.Scores = player.Scores
-                    .OrderByDescending(c => c.AP)
-                    .Take(20)
-                    .ToList();
-            }
+            songSuggest.log?.WriteLine($"Players with 20 scores after score selection: {players.Count}");
 
             //Remove players with too large a gap in their scores.
             double spread = 0.80; //lowest value must be at least 80% of first.
             players = new SortedDictionary<string, AccPlayer>(
                 players
-                    .Where(pair => pair.Value.Scores.Last().AP > pair.Value.Scores.First().AP*spread)
+                    .Where(pair => pair.Value.Scores.First().AP * spread < pair.Value.Scores.Last().AP)
                     .ToDictionary(pair => pair.Key, pair => pair.Value)
             );
+
+            songSuggest.log?.WriteLine($"Players with low spread: {players.Count}");
 
             List<Top10kPlayer> top10kPlayers = new List<Top10kPlayer>();
 
@@ -314,18 +325,79 @@ namespace AccSaberData
             songSuggest.accSaberScoreBoard.top10kPlayers = top10kPlayers;
             songSuggest.accSaberScoreBoard.top10kSongMeta.Clear();
             songSuggest.accSaberScoreBoard.GenerateTop10kSongMeta();
-            songSuggest.accSaberScoreBoard.Save();
+            songSuggest.accSaberScoreBoard.Save("AccSaberLeaderboardData");
+        }
+        
+        //Reduce the scores of players to the 20 best score
+        private void Top20Scores(SortedDictionary<string, AccPlayer> players)
+        {
+            foreach (var player in players.Values)
+            {
+                player.Scores = player.Scores
+                    .OrderByDescending(c => c.AP)
+                    .Take(20)
+                    .ToList();
+            }
         }
 
+        //Select at most 8 scores of each category weighted by AP (8, 8, 4 is an option)
+        //Then any non updated score is given a recursive handling until 20 scores from a single leaderboard is found.)
+        private void BalancedLeaderboardSampling(List<AccPlayer> players, int maxGroupSamples)
+        {
+            //Settings variables.
+            int maxScores = 20; //Target scores to return.
+            double maxSpread = 0.8;
+
+            SongCategory activeCategories = SongCategory.AccSaberTrue | SongCategory.AccSaberStandard | SongCategory.AccSaberTech;
+            //Helper function which checks if a score has a given category active via masterdata.
+            Func<Score, SongCategory, bool> validScore = (candidate, group) => songSuggest.songLibrary.HasAllSongCategory(candidate.Song.SongID, group);
+
+            List<AccPlayer> invalidPlayers = new List<AccPlayer>();
+
+            foreach (var player in players)
+            {
+                var sortedScores = player.Scores.OrderByDescending(candidate => candidate.AP).ToList();
+
+                // Lets get the sample size from all Acc Saber categories, and then reduce the list if needed.
+                var scores = Enum.GetValues(typeof(SongCategory))                               //Get Int values for all SongCategory
+                .Cast<SongCategory>()                                                           //Convert the list to actual enum type
+                .Where(value => activeCategories.HasFlag(value))                                //Reduce list to active groups only
+                .Select(group => sortedScores.Where(candidate => validScore(candidate,group)))  //Sort candidates into groups based on their enum
+                .SelectMany(groupCandidates => groupCandidates.Take(maxGroupSamples))           //Combine all lists to a single with a max selection
+                .OrderByDescending(candidate => candidate.AP)                                   //Order has been changed by groups, so we need to resort
+                .Take(maxScores)                                                                //Reduce the list to the found target
+                .ToList();                                                                      //And turn it back into a list for later processing
+
+                //Checks if a player in invalid (less than 20 scores, or too large a spread in scores.
+                //If issue is found record player and skip to next.
+                if (scores.Count() < 20 || scores.First().AP * maxSpread > scores.Last().AP)
+                {
+                    invalidPlayers.Add(player);
+                    continue;
+                }
+
+                //Player is valid, record the scores.
+                player.Scores = scores;
+            }
+
+            songSuggest.log?.WriteLine($"Invalid Players at max {maxGroupSamples} samples per group: {invalidPlayers.Count()}");
+
+            //Perform a recursive reduction in score requirements until we tried to find 20 valid scores.
+            int extraScores = 2;
+            if (invalidPlayers.Count() == 0 || maxGroupSamples < maxScores)
+            {
+                int newTarget = Math.Min(maxGroupSamples + extraScores, maxScores);
+                BalancedLeaderboardSampling(invalidPlayers, newTarget);
+            }
+
+            //in last loop we remove the scores of any unbalanced players instead
+            if (maxGroupSamples == maxScores)
+            {
+                foreach (var player in invalidPlayers)
+                {
+                    player.Scores.Clear();
+                }
+            }
+        }
     }
-
-
-
-//Notecount on removed songs.
-//Robber and bouqet - 776
-//Tell me you know - 396
-//All my love - 260
-//What you know - 242
-//Waiting for love - 420
-//simulation - 212
 }

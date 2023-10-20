@@ -69,6 +69,20 @@ namespace SongLibraryNS
             }
         }
 
+        public String GetDisplayName(String scoreSaberID)
+        {
+            try
+            {
+                return $"{songs[scoreSaberID].name} ({GetDifficultyName(scoreSaberID)} - {scoreSaberID})";
+            }
+            //Song is not in library, lets try pulling info from web
+            catch
+            {
+                WebGetSongInfo(scoreSaberID);
+                return $"{songs[scoreSaberID].name} ({GetDifficultyName(scoreSaberID)} - {scoreSaberID})";
+            }
+        }
+
         public String GetHash(String scoreSaberID)
         {
             try
@@ -190,7 +204,7 @@ namespace SongLibraryNS
         //Deactives SongType/s
         public void RemoveSongCategory(String songID, SongCategory songCategory)
         {
-            Console.WriteLine($"Removing {songCategory} from {songID} ");
+            songSuggest.log?.WriteLine($"Removing {songCategory} from {songID} ");
             var song = songs[songID];
 
             // Check if update is needed and then perform it.

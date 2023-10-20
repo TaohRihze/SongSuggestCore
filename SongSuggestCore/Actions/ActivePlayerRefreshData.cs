@@ -62,6 +62,10 @@ namespace Actions
                         //attempt to add the song to the library.
                         songLibrary.AddSong(score.leaderboard.id + "", score.leaderboard.songName, score.leaderboard.songHash, score.leaderboard.difficulty.difficulty + "",score.leaderboard.stars);
 
+
+                        //Some scores may not have a max score listed, so we need to verify this first and set it
+                        if (score.leaderboard.maxScore == 0) score.leaderboard.maxScore = ManualData.SongMaxScore($"{score.leaderboard.id}", songSuggest);
+
                         //Create a score object from the website Score, and add it to the candidates
                         ActivePlayerScore tmpScore = new ActivePlayerScore
                         {

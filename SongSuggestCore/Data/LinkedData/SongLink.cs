@@ -62,7 +62,7 @@ namespace LinkedData
 
         private double GetMaxPP(SongSuggest songSuggest, String songID)
         {
-            return songSuggest.scoreSaberScoreBoard.top10kSongMeta[songID].maxScore;
+            return songSuggest.songSuggest.Leaderboard().top10kSongMeta[songID].maxScore;
         }
     }
 }

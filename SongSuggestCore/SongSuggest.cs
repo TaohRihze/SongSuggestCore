@@ -103,9 +103,7 @@ namespace SongSuggestNS
 
             status = "Checking loaded data for new Online Files";
 
-
             status = "Ready";
-
         }
 
         //Validate CacheFiles and download new versions if available.

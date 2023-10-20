@@ -1,32 +1,11 @@
 ﻿using System;
 using Actions;
+using SongSuggestNS;
 
 namespace Settings
 {
     public class SongSuggestSettings
     {
-
-
-
-        //public String scoreSaberID { get; set; }
-        //[Obsolete("Not Used, will be removed in the future")]
-        //public int rankFrom { get; set; } = 1;
-        //[Obsolete("Not Used, will be removed in the future")]
-        //public int rankTo { get; set; } = 10000;
-        //public bool ignorePlayedAll { get; set; } = false;
-        //public int ignorePlayedDays { get; set; } = 60;
-        //public bool ignoreNonImproveable { get; set; } = false;
-        //public int requiredMatches { get; set; } = 90;
-        //public bool useLikedSongs { get; set; } = false;
-        //public bool fillLikedSongs { get; set; } = true;
-        //public bool useLocalScores { get; set; } = false;
-        //public FilterSettings filterSettings {get;set;}
-        //public PlaylistSettings playlistSettings { get; set; }
-        //public int extraSongs { get; set; } = 25;
-        //[Obsolete("Test function, did not work, will be removed in the future")]
-        //public int skipSongsCount { get; set; } = 0;
-        //public int playlistLength { get; set; } = 50;
-
         public String ScoreSaberID { get; set; }
         public bool IgnorePlayedAll { get; set; } = false;
         public int IgnorePlayedDays { get; set; } = 60;
@@ -48,35 +27,7 @@ namespace Settings
         public int OriginSongCount { get; set; } = 50;
         public FilterSettings FilterSettings { get; set; }
         public PlaylistSettings PlaylistSettings { get; set; }
+        public SongCategory AccSaberPlaylistCategories { get; set; } = SongCategory.AccSaberStandard | SongCategory.AccSaberTrue | SongCategory.AccSaberTech;
 
-        ////To be deleted once UI updated.
-        //[Obsolete("Use PascalCase")]
-        //public string scoreSaberID { get => ScoreSaberID; set => ScoreSaberID = value; }
-        [Obsolete("Not Used, will be removed in the future")]
-        public int rankFrom { get; set; } = 1;
-        [Obsolete("Not Used, will be removed in the future")]
-        public int rankTo { get; set; } = 10000;
-        //[Obsolete("Use PascalCase")]
-        //public bool ignorePlayedAll { get => IgnorePlayedAll; set => IgnorePlayedAll = value; }
-        //[Obsolete("Use PascalCase")]
-        //public int ignorePlayedDays { get => IgnorePlayedDays; set => IgnorePlayedDays = value; }
-        //[Obsolete("Use PascalCase")]
-        //public bool ignoreNonImproveable { get => IgnoreNonImproveable; set => IgnoreNonImproveable = value; }
-        //[Obsolete("Use PascalCase")]
-        //public int requiredMatches { get => RequiredMatches; set => RequiredMatches = value; }
-        //[Obsolete("Use PascalCase")]
-        //public bool useLikedSongs { get => UseLikedSongs; set => UseLikedSongs = value; }
-        //[Obsolete("Use PascalCase")]
-        //public bool fillLikedSongs { get => FillLikedSongs; set => FillLikedSongs = value; }
-        //[Obsolete("Use PascalCase")]
-        //public bool useLocalScores { get => UseLocalScores; set => UseLocalScores = value; }
-        //[Obsolete("Use PascalCase")]
-        //public FilterSettings filterSettings { get => FilterSettings; set => FilterSettings = value; }
-        //[Obsolete("Use PascalCase")]
-        //public PlaylistSettings playlistSettings { get => PlaylistSettings; set => PlaylistSettings = value; }
-        //[Obsolete("Use PascalCase")]
-        //public int extraSongs { get => ExtraSongs; set => ExtraSongs = value; }
-        [Obsolete("Not Used, will be removed in the future")] public int skipSongsCount { get; set; } = 0;
-        //public int playlistLength { get => PlaylistLength; set => PlaylistLength = value; }
     }
 }

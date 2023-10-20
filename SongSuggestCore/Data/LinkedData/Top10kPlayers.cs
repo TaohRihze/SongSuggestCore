@@ -16,7 +16,12 @@ namespace LinkedData
 
         public void Save()
         {
-            songSuggest.fileHandler.SaveScoreBoard(top10kPlayers,"Top10KPlayers");
+            Save("Top10KPlayers");
+        }
+
+        public void Save(string leaderboardName)
+        {
+            songSuggest.fileHandler.SaveScoreBoard(top10kPlayers, leaderboardName);
         }
 
         public void Load(string scoreBoardName)
