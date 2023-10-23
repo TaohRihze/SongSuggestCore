@@ -16,7 +16,6 @@ namespace SongSuggestNS
 {
     public class SongSuggest
     {
-        private SongCategoryTranslate songCategoryTranslation = new SongCategoryTranslate();
         public String status { get; set; } = "Uninitialized";
         public ActivePlayer activePlayer { get; set; }
         //Default as an unset player. Dump ID here and next RefreshActivePlayer() updates it.
@@ -318,49 +317,8 @@ namespace SongSuggestNS
 
         public String SongCategoryText(String lookup)
         {
-            if (!songCategoryTranslation.translation.ContainsKey(lookup)) return lookup;
-            return songCategoryTranslation.translation[lookup];
-        }
-    }
-
-    [Flags]
-    public enum SongCategory
-    {
-        ScoreSaber = 1,          
-        AccSaberTrue = 2,
-        AccSaberStandard = 4,
-        AccSaberTech = 8,
-        BrokenDownloads = 16          
-    }
-    public enum SongSortCriteria
-    {
-        None = 0,
-        Age = 1,
-        Accuracy = 2,
-        PP = 3,
-        AP = 4,
-        Star = 5,
-        Complexity = 6,
-        WorldRank = 7,
-        WorldPercentage = 8
-    }
-
-    public class SongCategoryTranslate
-    {
-        public SortedDictionary<string,string> translation = new SortedDictionary<string,string>();
-
-        public SongCategoryTranslate()
-        {
-            translation.Add($"{(SongCategory)1}Label", "Score Saber");
-            translation.Add($"{(SongCategory)1}Hover", "Ranked Score Saber Songs");
-            translation.Add($"{(SongCategory)2}Label", "AccSaber - True");
-            translation.Add($"{(SongCategory)2}Hover", "AccSabers True Acc Leaderboard");
-            translation.Add($"{(SongCategory)4}Label", "AccSaber - Standard");
-            translation.Add($"{(SongCategory)4}Hover", "AccSabers Standard Acc Leaderboard");
-            translation.Add($"{(SongCategory)8}Label", "AccSaber - Tech");
-            translation.Add($"{(SongCategory)8}Hover", "AccSabers Tech Acc Leaderboard");
-            translation.Add($"{(SongCategory)16}Label", "Broken Downloads");
-            translation.Add($"{(SongCategory)16}Hover", "Songs that may break in download for various reasons. Turn on if you do not mind a Missing Download icon and/or have the songs already.");
+            if (!Translate.SongCategoryDictionary.ContainsKey(lookup)) return lookup;
+            return Translate.SongCategoryDictionary[lookup];
         }
     }
 }
