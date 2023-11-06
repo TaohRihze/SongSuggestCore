@@ -346,7 +346,7 @@ namespace AccSaberData
         {
             //Settings variables.
             int maxScores = 20; //Target scores to return.
-            double maxSpread = 0.8;
+            double maxSpread = 0.9;
 
             SongCategory activeCategories = SongCategory.AccSaberTrue | SongCategory.AccSaberStandard | SongCategory.AccSaberTech;
             //Helper function which checks if a score has a given category active via masterdata.

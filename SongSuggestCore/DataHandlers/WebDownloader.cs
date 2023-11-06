@@ -11,6 +11,7 @@ using Data;
 using System.Collections.Generic;
 using SongLibraryNS;
 using LinkedData;
+using System.Text;
 
 namespace WebDownloading
 {
@@ -28,6 +29,7 @@ namespace WebDownloading
         {
             //Adding Tls12 to allowed protocols to be able to download from the GIT.
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+            client.Encoding = Encoding.UTF8;
         }
 
         //Generic web puller for scores (starts page 1, page 0 and 1 gives same results)
