@@ -39,7 +39,7 @@ namespace Actions
                 .ToList();
 
             //Update completion to partial completion
-            data.manager.songSuggestCompletion = 0.44;
+            data.songSuggestCompletion = 0.44;
 
             //Update found links
             linkedSongsCount = links.Count();
@@ -68,11 +68,11 @@ namespace Actions
                 double localPercentDone = (double)item.index / maxRank;
                 double localGroupStart = 0.44;
                 double localGroupsSize = 0.22;
-                data.manager.songSuggestCompletion = localGroupStart + (localPercentDone * localGroupsSize);
+                data.songSuggestCompletion = localGroupStart + (localPercentDone * localGroupsSize);
             }
 
             //Update completion to full completion
-            data.manager.songSuggestCompletion = 0.66;
+            data.songSuggestCompletion = 0.66;
         }
 
         //Filters players that should not be used. (Only filters out the active player currently, previous versions checked global rank and such, but it did not improve results).
@@ -94,7 +94,7 @@ namespace Actions
             double localPercentDone = (double)player.rank / maxRank;
             double localGroupStart = 0.11;
             double localGroupsTotalValue = 0.33;
-            data.manager.songSuggestCompletion = localGroupStart + (localPercentDone * localGroupsTotalValue);
+            data.songSuggestCompletion = localGroupStart + (localPercentDone * localGroupsTotalValue);
 
             return new SongLink() { playerID = player.id, originSongScore = originSong, targetSongScore = suggestedSong };
         }
@@ -115,7 +115,7 @@ namespace Actions
             if (!validatedScore) return false;
 
 
-            data.manager.linkedPlayers++; //Consider Scrapping or another way to keep track of this ...
+            //data.manager.linkedPlayers++; //Consider Scrapping or another way to keep track of this ...
             //Count validated songs    
             return true;
         }

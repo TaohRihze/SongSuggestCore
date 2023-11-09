@@ -36,6 +36,12 @@ namespace SongLibraryNS
                 //simulation            212 : 368917
                 case "368917":
                     return SongMaxScore(212);
+                //Whenever, Whereever   714 : 576786
+                case "576786":
+                    return SongMaxScore(714);
+                //What You Know         630 : 572414
+                case "572414":
+                    return SongMaxScore(630);
                 default:
                     songSuggest.log?.WriteLine($"Song has no maxScore, nor known alternate: {songID}");
                     return 0;

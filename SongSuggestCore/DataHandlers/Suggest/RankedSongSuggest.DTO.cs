@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using LinkedData;
+using SongSuggestNS;
 
 namespace Actions
 {
@@ -7,23 +9,31 @@ namespace Actions
     {
         public class DTO
         {
-            public RankedSongSuggest manager;
+            private RankedSongSuggest manager;
+            internal DTO(RankedSongSuggest manager) {this.manager = manager;}
 
+
+            //Manager DTO Values
             public List<string> originSongIDs { get => manager.originSongIDs; }
+            public List<string> fillerSongs { get => manager.GetFillerSongs(); }
+            public List<string> playedOriginSongs { get => manager.SelectPlayedOriginSongs(); }
             public List<string> ignoreSongs { get => manager.ignoreSongs; }
             public Top10kPlayers leaderboard { get => manager.suggestSM.Leaderboard(); }
             public SuggestSourceManager suggestSM { get => manager.suggestSM; }
-            public double betterAccCap { get => manager.betterAccCap; }
-            public double worseAccCap { get => manager.worseAccCap; }
-
             public string playerID { get => manager.songSuggest.activePlayerID; }
+            public int targetFillers { get => manager.targetFillers; }
 
-            internal DTO(RankedSongSuggest manager)
-            {
-                this.manager = manager;
-            }
 
-            public RankedSongSuggest.DTO dto { get => manager.dto; }
+            //SongSuggest DTO Values
+            public TextWriter log { get => manager.songSuggest.log; }
+
+            //Settings DTO Values
+            public double betterAccCap { get => manager.settings.BetterAccCap; }
+            public double worseAccCap { get => manager.settings.WorseAccCap; }
+            public bool useLikedSongs { get => manager.settings.UseLikedSongs; }
+            public bool fillLikedSongs { get => manager.settings.FillLikedSongs; }
+            public int originSongsCount { get => manager.settings.OriginSongCount; }
+
 
             //Workaround for Progress
             public double songSuggestCompletion { get => manager.songSuggestCompletion; set => manager.songSuggestCompletion = value; }

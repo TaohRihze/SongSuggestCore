@@ -170,16 +170,13 @@ namespace Actions
 
             //Find the Origin Song ID's based on Active Players data.
             songSuggest.status = "Finding Songs to Match";
-            originSongIDs = OriginSongs(useLikedSongs, fillLikedSongs);
-
+            GenerateOriginSongIDs.Execute(dto, out originSongIDs);
             songSuggest.log?.WriteLine("Completion: " + (songSuggestCompletion * 100) + "%");
 
             //Link the origin songs with the songs on the LeaderBoard as a basis for suggestions.
-            //GenerateLinks(originSongIDs, songSuggest.songBanning.GetPermaBannedIDs());
             ignoreSongs = songSuggest.songBanning.GetPermaBannedIDs();
             GenerateLinks.Execute(dto, out originSongs, out targetSongs, out linkedSongs);
-
-
+            linkedPlayers = linkedSongs / 19; //Workaround for now there is always 19 linked songs per player, this may change.
             songSuggest.log?.WriteLine("Completion: " + (songSuggestCompletion * 100) + "%");
             songSuggest.log?.WriteLine($"Suggest Linking Done: {timer.ElapsedMilliseconds}ms");
 
@@ -190,11 +187,27 @@ namespace Actions
                 songSuggest.log?.WriteLine("Not Enough Player Links Found ({0}) with Acc Limit on. Activate Limit Breaker.", linkedPlayers);
                 betterAccCap = Double.MaxValue;
                 worseAccCap = 0;
-                //GenerateLinks(originSongIDs, songSuggest.songBanning.GetPermaBannedIDs());
                 GenerateLinks.Execute(dto, out originSongs, out targetSongs, out linkedSongs);
                 songSuggest.log?.WriteLine("Completion: " + (songSuggestCompletion * 100) + "%");
                 songSuggest.log?.WriteLine($"Suggest Linking Done: {timer.ElapsedMilliseconds}ms");
             }
+        }
+
+        //If the player has no available played songs (or low count) we need a list of potential fillers.
+        //At the same time we remove limits on all songs
+        public List<string> GetFillerSongs()
+        {
+            betterAccCap = Double.MaxValue;
+            worseAccCap = 0;
+            songSuggest.lowQualitySuggestions = true;
+
+            //Find all songs in the leaderboard with at least a minimum of records amount, and sort them by Max Score, so easiest is first
+            var fillerSongs = suggestSM.Leaderboard().top10kSongMeta
+                .Where(c => c.Value.count >= minPlays)
+                .OrderBy(c => c.Value.maxScore)
+                .Select(c => c.Value.songID)
+                .ToList();
+            return fillerSongs;
         }
 
         //Order the songs via the different active filters
@@ -225,68 +238,6 @@ namespace Actions
             ppFilterOrdered = targetSongs.endPoints.Values.OrderByDescending(s => s.estimatedPP).Select(p => p.songID).ToList();
             //Filter on which PP is strongest in Local vs Global
             ppLocalVSGlobalOrdered = targetSongs.endPoints.Values.OrderByDescending(s => s.localVSGlobalPP).Select(p => p.songID).ToList();
-        }
-
-        //Creates a list of the origin songs (Liked and top originSongsCount)
-        public List<String> OriginSongs(Boolean useLikedSongs, Boolean fillLikedSongs)
-        {
-            List<String> originSongsIDs = new List<String>();
-            //Add Liked songs.
-            songSuggest.log?.WriteLine("Use Liked Songs: " + useLikedSongs);
-
-            if (useLikedSongs) originSongsIDs.AddRange(suggestSM.LikedSongs());
-            int targetCount = originSongsIDs.Count();
-
-
-            songSuggest.log?.WriteLine("Liked Songs in list: " + originSongsIDs.Count());
-
-            //Add the standard origin songs if either normal mode of filler is activated
-            if (!useLikedSongs || fillLikedSongs)
-            {
-                //update targetsongs to either originSongsCount, or liked songs total, whichever is larger
-                targetCount = Math.Max(originSongsCount, targetCount);
-
-                originSongsIDs.AddRange(SelectPlayedOriginSongs());
-
-                originSongsIDs = originSongsIDs
-                    .Distinct()         //Remove Duplicates
-                    .ToList();
-
-                songSuggest.log?.WriteLine("Liked + Played Songs in list: " + originSongsIDs.Count());
-
-                //int neededFillers = targetFillers - originSongsIDs.Count();
-                int neededFillers = (originSongsIDs.Count == 0) ? targetFillers : 0;
-
-                if (neededFillers > 0)
-                {
-                    //Too few source songs, so autoactivating "Limitbreak" and set low match warning
-                    songSuggest.log?.WriteLine($"Less than {targetFillers} played. Filler Songs Activated");
-                    betterAccCap = Double.MaxValue;
-                    songSuggest.lowQualitySuggestions = true;
-
-                    //Find all songs in the leaderboard with at least a minimum of records amount, and sort them by Max Score, so easiest is first, and remove already approved songs
-                    var fillerSongs = suggestSM.Leaderboard().top10kSongMeta
-                        .Where(c => c.Value.count >= minPlays)
-                        .OrderBy(c => c.Value.maxScore)
-                        .Select(c => c.Value.songID)
-                        .ToList();
-
-                    originSongsIDs.AddRange(fillerSongs);
-
-                    originSongsIDs = originSongsIDs
-                        .Distinct()         //Remove Duplicates
-                        .Take(targetFillers)
-                        .ToList();
-
-                    songSuggest.log?.WriteLine("Liked + Played + Filler Songs in list: " + originSongsIDs.Count());
-                }
-
-                originSongsIDs = originSongsIDs
-                    .Take(targetCount)  //Try and get originSongsCount or all liked whichever is larger
-                    .ToList();
-                songSuggest.log?.WriteLine("Final Songs in list: " + originSongsIDs.Count());
-            }
-            return originSongsIDs;
         }
 
         //Goal here is to get a good sample of a players songs that are not banned. The goal is try and find originSongsCount candidates to represent a player.
