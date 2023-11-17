@@ -105,10 +105,24 @@ namespace Actions
         //Creates a playlist with playlist count suggested songs based on the link system.
         public void SuggestedSongs()
         {
+            ScoreLocation scoreLocation = ScoreLocation.ScoreSaber;
+            switch (settings.Leaderboard)
+            {
+                case LeaderboardType.ScoreSaber:
+                    scoreLocation = ScoreLocation.ScoreSaber;
+                    break;
+                case LeaderboardType.AccSaber:
+                    scoreLocation = ScoreLocation.ScoreSaber;
+                    break;
+                case LeaderboardType.BeatLeader:
+                    scoreLocation = ScoreLocation.BeatLeader;
+                    break;
+            }
+
             suggestSM = new SuggestSourceManager()
             {
                 songSuggest = this.songSuggest,
-                scoreLocation = useLocalScores ? ScoreLocation.LocalScores : ScoreLocation.ScoreSaber,
+                scoreLocation = useLocalScores ? ScoreLocation.LocalScores : scoreLocation,
                 leaderboardType = leaderboard
             };
 

@@ -3,6 +3,7 @@ using SongSuggestNS;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BeatLeaderJson;
 
 namespace SongLibraryNS
 {
@@ -35,6 +36,31 @@ namespace SongLibraryNS
             {
                 songs.Add(song.scoreSaberID, song);
                 updated = true;
+            }
+        }
+
+        //Add a Song via the BeatLeader Song Object
+        public void AddSong(SongSuggestSong song)
+        {
+            if (!songs.ContainsKey(song.id))
+            {
+                var internalSong = new Song()
+                {
+                    scoreSaberID = song.id,
+                    beatLeaderID = song.id,
+                    starBeatLeader = song.stars,
+                    songCategory = SongCategory.BeatLeader,
+                    hash = song.hash,
+                    difficulty = Song.GetDifficultyValue(song.difficulty),
+                    name = song.name
+                };
+                this.songs.Add(internalSong.scoreSaberID, internalSong);
+            }
+            else
+            {
+                var internalSong = songs[song.id];
+                internalSong.starBeatLeader = song.stars;
+                AddSongCategory(song.id, SongCategory.BeatLeader);
             }
         }
 

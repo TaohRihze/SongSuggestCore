@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using SongLibraryNS;
 using LinkedData;
 using System.Text;
+using Settings;
 
 namespace WebDownloading
 {
@@ -75,7 +76,8 @@ namespace WebDownloading
             {
                 _ScoreSaberThrottler.Call();
                 //https://scoresaber.com/api/leaderboard/by-hash/E42BCDF50EA1F961CB8CEFE502E82806866F6479/info?difficulty=9&gameMode=SoloStandard
-                String songInfo = client.DownloadString("https://scoresaber.com/api/leaderboard/by-hash/" + hash + "/info?difficulty=" + difficulty + "&gameMode=SoloStandard");
+                String webLink = $"https://scoresaber.com/api/leaderboard/by-hash/{hash}/info?difficulty={difficulty}&gameMode=SoloStandard";
+                String songInfo = client.DownloadString(webLink);
                 songSuggest.log?.WriteLine("Unknown Song found and downloaded");
                 return JsonConvert.DeserializeObject<LeaderboardInfo>(songInfo, serializerSettings);
             }
@@ -205,6 +207,41 @@ namespace WebDownloading
             return new BeatLeaderScore();
         }
 
+        //Beatleader Leaderboard
+        public List<Top10kPlayer> GetBeatLeaderLeaderboard()
+        {
+            try
+            {
+                //https://api.beatleader.xyz/songsuggest/
+                String songInfo = client.DownloadString("https://api.beatleader.xyz/songsuggest/");
+                return JsonConvert.DeserializeObject<List<Top10kPlayer>>(songInfo, serializerSettings);
+            }
+            catch
+            {
+                songSuggest.log?.WriteLine("Error finding BeatLeader Leaderboard");
+            }
+            return new List<Top10kPlayer>();
+        }
+
+        //Beatleader New Songs
+        public List<BeatLeaderJson.SongSuggestSong> GetBeatLeaderRankedSongs(int unixTimestamp)
+        {
+            //Original ranked songs are not ranked, so they have no rank time, so to include them we need to use -1
+            if (unixTimestamp == 0) unixTimestamp = -1;
+
+            try
+            {
+                //https://api.beatleader.xyz/songsuggest/songs?after_time=1600000000
+                String songInfo = client.DownloadString($"https://api.beatleader.xyz/songsuggest/songs?after_time={unixTimestamp}");
+                return JsonConvert.DeserializeObject<List<BeatLeaderJson.SongSuggestSong>>(songInfo, serializerSettings);
+            }
+            catch
+            {
+                songSuggest.log?.WriteLine($"Error receiving Beatleader Songlist past Timestamp: {unixTimestamp}");
+            }
+            return new List<BeatLeaderJson.SongSuggestSong>();
+        }
+
         public FilesMeta GetFilesMeta()
         {
             songSuggest.status = "Getting Files.meta";
@@ -213,6 +250,7 @@ namespace WebDownloading
             string metaInfo = client.DownloadString(webPath);
             return JsonConvert.DeserializeObject<FilesMeta>(metaInfo, serializerSettings);
         }
+
         public List<Song> GetSongLibrary()
         {
             songSuggest.status = "Downloading Song Library";

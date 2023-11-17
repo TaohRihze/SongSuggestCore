@@ -27,6 +27,7 @@ namespace SongSuggestNS
         public SongBanning songBanning { get; set; }
         public Top10kPlayers scoreSaberScoreBoard { get; set; }
         public Top10kPlayers accSaberScoreBoard { get; set; }
+        public Top10kPlayers beatLeaderScoreBoard { get; set; }
         public LocalPlayerScoreManager localScores { get; set; }
 
         //Last used Song Evaluation is stored here if the UI wants to use them for further information than just creation of the playlists

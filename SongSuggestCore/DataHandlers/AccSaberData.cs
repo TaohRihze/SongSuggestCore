@@ -42,6 +42,13 @@ namespace AccSaberData
         public List<Score> PlayerScores { get; set; }
     }
 
+    //Suported ways to handle leaderboards score selection
+    public enum AccSaberLeaderboardSongSelection
+    {
+        Top20Scores,
+        BalancedLeaderboardSampling
+    }
+
     public class AccSaberSongs
     {
         public SongSuggest songSuggest { get; set; }
@@ -216,13 +223,6 @@ namespace AccSaberData
         public void Clear()
         {
             songs.Clear();
-        }
-
-        //Suported ways to handle leaderboards score selection
-        public enum AccSaberLeaderboardSongSelection
-        {
-            Top20Scores,
-            BalancedLeaderboardSampling
         }
 
         //Default Leaderboard

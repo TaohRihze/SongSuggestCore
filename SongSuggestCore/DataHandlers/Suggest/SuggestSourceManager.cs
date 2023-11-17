@@ -25,6 +25,14 @@ namespace Actions
                         .ToList();
                 case ScoreLocation.LocalScores:
                     return songSuggest.localScores.GetScores(LeaderboardSongCategory());
+                //Temporary Hardcoded to the 20 selected scores of the BeatLeader scores
+                case ScoreLocation.BeatLeader:
+                    return Leaderboard()
+                        .top10kPlayers
+                        .Where(c => songSuggest.activePlayerID == c.id)
+                        .SelectMany(c => c.top10kScore)
+                        .Select(c => c.songID)
+                        .ToList();
             }
 
             //Unknown handling detected
@@ -45,8 +53,18 @@ namespace Actions
                     case LeaderboardType.ScoreSaber:
                         if (!songSuggest.activePlayer.scores.ContainsKey(songID)) return 0;
                         return songSuggest.activePlayer.scores[songID].pp;
+                    //Temporary Hardcoded to the 20 selected scores of the BeatLeader scores
+                    case LeaderboardType.BeatLeader:
+                        return (double) Leaderboard()
+                         .top10kPlayers
+                        .Where(c => songSuggest.activePlayerID == c.id)
+                        .SelectMany(c => c.top10kScore)
+                        .Where(c => c.songID == songID)
+                        .First()
+                        .pp;
                 }
             }
+
             double accuracy = PlayerAccuracyValue(songID);
             double score = CalculatedScore(songID, accuracy);
             return score;
@@ -62,6 +80,9 @@ namespace Actions
                     return songSuggest.activePlayer.scores[songID].accuracy / 100;
                 case ScoreLocation.LocalScores:
                     return songSuggest.localScores.GetAccuracy(songID);
+                //Temporary Workaround
+                case ScoreLocation.BeatLeader:
+                    return 0.5;
             }
 
             //Unknown handling detected
@@ -78,6 +99,9 @@ namespace Actions
                     return songSuggest.activePlayer.scores[songID].timeSet;
                 case ScoreLocation.LocalScores:
                     return songSuggest.localScores.GetTimeSet(songID);
+                case ScoreLocation.BeatLeader:
+                    return DateTime.UtcNow.AddYears(-1);
+
             }
 
             //Unknown handling detected
@@ -118,7 +142,8 @@ namespace Actions
                     return songSuggest.scoreSaberScoreBoard;
                 case LeaderboardType.AccSaber:
                     return songSuggest.accSaberScoreBoard;
-
+                case LeaderboardType.BeatLeader:
+                    return songSuggest.beatLeaderScoreBoard;
             }
             throw new InvalidOperationException($"Unknown ScoreBoardTopPlays Source found: {leaderboardType}");
         }
@@ -130,9 +155,10 @@ namespace Actions
             {
                 case LeaderboardType.ScoreSaber:
                     return SongCategory.ScoreSaber;
-
                 case LeaderboardType.AccSaber:
                     return SongCategory.AccSaberTrue | SongCategory.AccSaberStandard | SongCategory.AccSaberTech;
+                case LeaderboardType.BeatLeader:
+                    return SongCategory.BeatLeader;
             }
             throw new InvalidOperationException($"Unknown LeaderboardSongCategory Source found: {leaderboardType}");
         }
