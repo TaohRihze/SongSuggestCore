@@ -1,5 +1,6 @@
 ﻿using System;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SongSuggestNS;
 
 
@@ -7,11 +8,25 @@ namespace SongLibraryNS
 {
     public class Song 
     {
-        public String scoreSaberID { get; set; }
-        public String beatLeaderID { get; set; }
-        public String name { get; set; }
-        public String hash { get; set; }
-        public String difficulty { get; set; }
+        private string _songID;
+        [JsonIgnore]
+        public string songID
+        { 
+            get
+            {
+                if (_songID == null)
+                {
+                    _songID = $"id{characteristic}-{difficulty}-{hash}";
+                }
+                return _songID;
+            }
+        }
+        public string scoreSaberID { get; set; }
+        public string beatLeaderID { get; set; }
+        public string name { get; set; }
+        public string hash { get; set; }
+        public string difficulty { get; set; }
+        public string characteristic { get; set; } = "Standard"; //Default might be removed later once all data is updated, for now updating on first load is fine.
         public SongCategory songCategory { get; set; }
         public double starScoreSaber
         {

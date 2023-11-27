@@ -6,7 +6,6 @@ using BeatLeaderJson;
 using AccSaberJson;
 using Newtonsoft.Json;
 using SongSuggestNS;
-using System.IO;
 using Data;
 using System.Collections.Generic;
 using SongLibraryNS;
@@ -24,7 +23,8 @@ namespace WebDownloading
         private JsonSerializerSettings serializerSettings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
 
         //Throttlers
-        private Throttler _ScoreSaberThrottler = new Throttler();
+        private Throttler _ScoreSaberThrottler = new Throttler() {callPerPeriod = 100, callPeriodSeconds = 15 }; //400/60
+        private Throttler _BeatLeaderThrottler = new Throttler() {callPerPeriod = 19, callPeriodSeconds = 4 }; //50/10
 
         public WebDownloader()
         {
@@ -193,11 +193,13 @@ namespace WebDownloading
         {
             try
             {
+                _BeatLeaderThrottler.Call();
                 //https://api.beatleader.xyz/score/76561197993806676/6F316D488C43288F3079407829C1028A5E998EBC/ExpertPlus/Standard
                 String playerID = songSuggest.activePlayerID;
                 String songHash = songSuggest.songLibrary.GetHash(songID);
                 String songDifcName = songSuggest.songLibrary.GetDifficultyName(songID);
-                String songInfo = client.DownloadString("https://api.beatleader.xyz/score/" + playerID + "/" + songHash + "/" + songDifcName + "/Standard");
+                string webString = $"https://api.beatleader.xyz/score/{playerID}/{songHash}/{songDifcName}/Standard";
+                String songInfo = client.DownloadString(webString);
                 return JsonConvert.DeserializeObject<BeatLeaderScore>(songInfo, serializerSettings);
             }
             catch
@@ -207,11 +209,36 @@ namespace WebDownloading
             return new BeatLeaderScore();
         }
 
+        //Generic web puller for BeatLeader Compact Scores
+        public ScoresCompact GetBeatLeaderScoresCompact(int count, int page ,long fromUnixTimeStamp)
+        {
+            string webString = "";
+            try
+            {
+                _BeatLeaderThrottler.Call();
+                //We grab oldest scores first, so updates are performed chronological
+                //https://api.beatleader.xyz/player/76561197993806676/scores/compact?sortBy=date&order=1&page=1&count=100&time_from=1700000000
+                String playerID = songSuggest.activePlayerID;
+                webString = $"https://api.beatleader.xyz/player/{playerID}/scores/compact?sortBy=date&order=1&page={page}&count={count}&time_from={fromUnixTimeStamp}";
+                String songInfo = client.DownloadString(webString);
+                return JsonConvert.DeserializeObject<ScoresCompact>(songInfo, serializerSettings);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                songSuggest.log?.WriteLine($"Error getting: {webString}");
+            }
+            return new ScoresCompact();
+        }
+
+
+
         //Beatleader Leaderboard
         public List<Top10kPlayer> GetBeatLeaderLeaderboard()
         {
             try
             {
+                _BeatLeaderThrottler.Call();
                 //https://api.beatleader.xyz/songsuggest/
                 String songInfo = client.DownloadString("https://api.beatleader.xyz/songsuggest/");
                 return JsonConvert.DeserializeObject<List<Top10kPlayer>>(songInfo, serializerSettings);
@@ -224,13 +251,14 @@ namespace WebDownloading
         }
 
         //Beatleader New Songs
-        public List<BeatLeaderJson.SongSuggestSong> GetBeatLeaderRankedSongs(int unixTimestamp)
+        public List<BeatLeaderJson.SongSuggestSong> GetBeatLeaderRankedSongs(long unixTimestamp)
         {
             //Original ranked songs are not ranked, so they have no rank time, so to include them we need to use -1
             if (unixTimestamp == 0) unixTimestamp = -1;
 
             try
             {
+                _BeatLeaderThrottler.Call();
                 //https://api.beatleader.xyz/songsuggest/songs?after_time=1600000000
                 String songInfo = client.DownloadString($"https://api.beatleader.xyz/songsuggest/songs?after_time={unixTimestamp}");
                 return JsonConvert.DeserializeObject<List<BeatLeaderJson.SongSuggestSong>>(songInfo, serializerSettings);
@@ -279,21 +307,23 @@ namespace WebDownloading
         int calls = 0;
         DateTime periodStart = DateTime.UtcNow;
 
+        public int callPerPeriod { get; set; }
+        public int callPeriodSeconds { get; set; }
+
         public void Call()
         {
             //Count up calls, check if we hit the 15 second mark of 100 calls
             calls++;
-            if (calls < 100) return;
+            if (calls < callPerPeriod) return;
 
 
             //Figure out how long the 100 calls have taken.
             double difference = (DateTime.UtcNow - periodStart).TotalSeconds;
 
             //Sleep missing time to 15 seconds
-            if (difference < 15)
+            if (difference < callPeriodSeconds)
             {
-
-                double sleepMS = (15 - difference) * 1000;
+                double sleepMS = (callPeriodSeconds - difference) * 1000;
                 Console.WriteLine("Sleeping: {0}ms", sleepMS);
                 System.Threading.Thread.Sleep((int)sleepMS);
             }

@@ -4,6 +4,7 @@ using System.Linq;
 using LinkedData;
 using SongSuggestNS;
 using Curve;
+using ScoreSabersJson;
 
 namespace Actions
 {
@@ -27,12 +28,14 @@ namespace Actions
                     return songSuggest.localScores.GetScores(LeaderboardSongCategory());
                 //Temporary Hardcoded to the 20 selected scores of the BeatLeader scores
                 case ScoreLocation.BeatLeader:
-                    return Leaderboard()
-                        .top10kPlayers
-                        .Where(c => songSuggest.activePlayerID == c.id)
-                        .SelectMany(c => c.top10kScore)
-                        .Select(c => c.songID)
-                        .ToList();
+                    return songSuggest.beatLeaderScores.GetScores(LeaderboardSongCategory());
+                    
+                    //return Leaderboard()
+                    //    .top10kPlayers
+                    //    .Where(c => songSuggest.activePlayerID == c.id)
+                    //    .SelectMany(c => c.top10kScore)
+                    //    .Select(c => c.songID)
+                    //    .ToList();
             }
 
             //Unknown handling detected
@@ -55,13 +58,16 @@ namespace Actions
                         return songSuggest.activePlayer.scores[songID].pp;
                     //Temporary Hardcoded to the 20 selected scores of the BeatLeader scores
                     case LeaderboardType.BeatLeader:
-                        return (double) Leaderboard()
-                         .top10kPlayers
-                        .Where(c => songSuggest.activePlayerID == c.id)
-                        .SelectMany(c => c.top10kScore)
-                        .Where(c => c.songID == songID)
-                        .First()
-                        .pp;
+                        var playerScore = songSuggest.beatLeaderScores.playerScores.Find(c => c.SongID == songID);
+                        return (playerScore != null) ? playerScore.PP:0;
+
+                        //return (double) Leaderboard()
+                        // .top10kPlayers
+                        //.Where(c => songSuggest.activePlayerID == c.id)
+                        //.SelectMany(c => c.top10kScore)
+                        //.Where(c => c.songID == songID)
+                        //.First()
+                        //.pp;
                 }
             }
 
@@ -71,6 +77,7 @@ namespace Actions
         }
 
         //Returns the acc value of a song, if song .. if song is unknown 0 is returned.
+        //Acc is 0 to 1.
         public double PlayerAccuracyValue(string songID)
         {
             switch (scoreLocation)
@@ -82,7 +89,9 @@ namespace Actions
                     return songSuggest.localScores.GetAccuracy(songID);
                 //Temporary Workaround
                 case ScoreLocation.BeatLeader:
-                    return 0.5;
+                    var playerScore = songSuggest.beatLeaderScores.playerScores.Find(c => c.SongID == songID);
+                    return (playerScore != null) ? playerScore.Accuracy : 0;
+                    //return 0.5;
             }
 
             //Unknown handling detected
@@ -100,7 +109,8 @@ namespace Actions
                 case ScoreLocation.LocalScores:
                     return songSuggest.localScores.GetTimeSet(songID);
                 case ScoreLocation.BeatLeader:
-                    return DateTime.UtcNow.AddYears(-1);
+                    var playerScore = songSuggest.beatLeaderScores.playerScores.Find(c => c.SongID == songID);
+                    return (playerScore != null) ? playerScore.TimeSet : DateTime.MinValue;
 
             }
 

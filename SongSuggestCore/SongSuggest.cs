@@ -10,7 +10,8 @@ using LinkedData;
 using System.IO;
 using System.Collections.Generic;
 using Data;
-using LocalScores;
+using PlayerScores;
+using System.Linq;
 
 namespace SongSuggestNS
 {
@@ -29,6 +30,7 @@ namespace SongSuggestNS
         public Top10kPlayers accSaberScoreBoard { get; set; }
         public Top10kPlayers beatLeaderScoreBoard { get; set; }
         public LocalPlayerScoreManager localScores { get; set; }
+        public BeatLeaderPlayerScoreManager beatLeaderScores { get; set; }
 
         //Last used Song Evaluation is stored here if the UI wants to use them for further information than just creation of the playlists
         public RankedSongSuggest songSuggest { get; private set; } = null;
@@ -320,6 +322,88 @@ namespace SongSuggestNS
         {
             if (!Translate.SongCategoryDictionary.ContainsKey(lookup)) return lookup;
             return Translate.SongCategoryDictionary[lookup];
+        }
+
+        //For now refresh request is manual.
+        public void LoadBeatLeader(bool refresh)
+        {
+            //Load Player Scorefile
+            beatLeaderScores = new PlayerScores.BeatLeaderPlayerScoreManager();
+            beatLeaderScores.songSuggest = this;
+            beatLeaderScores.Load();
+            beatLeaderScores.Refresh();
+
+            //Update Leaderboard if out of date (no check currently.)
+            if (refresh) RefreshBeatLeaderLeaderBoard();
+
+            //Load the Leaderboard
+            var leaderboard = new Top10kPlayers();
+            leaderboard.FormatName = "Beat Leader";
+            leaderboard.songSuggest = this;
+            leaderboard.Load("BeatLeaderLeaderboard");
+            beatLeaderScoreBoard = leaderboard;
+
+            //Add the active ranked songs to Song Library
+            var songs = webDownloader.GetBeatLeaderRankedSongs(0);
+            var standardSongs = songs
+                .Where(c => c.mode == "Standard")
+                .ToList();
+
+            foreach (var song in standardSongs)
+            {
+                songLibrary.AddSong(song);
+            }
+
+
+
+        }
+
+        private void RefreshBeatLeaderLeaderBoard()
+        {
+
+
+            var beatLeaderPlayerList = webDownloader.GetBeatLeaderLeaderboard();
+
+            //Pruning of recieved data. Hopefully this is temporary and filtering can be moved to server side.
+            //Removal of mismatching players
+            log?.WriteLine($"--- Check For Large Spread ---");
+            int totalSpread = 0;
+            var toRemove = new List<Top10kPlayer>();
+
+            foreach (var player in beatLeaderPlayerList)
+            {
+                double diff = player.top10kScore.Last().pp / player.top10kScore.First().pp;
+                if (diff < 0.7)
+                {
+                    totalSpread++;
+                    Console.WriteLine($"Player:{player.name}({player.id}) Rank: {player.rank} Diff: {diff}");
+                    toRemove.Add(player);
+                }
+            }
+
+            log?.WriteLine($"Large Spread: {totalSpread}");
+            log?.WriteLine();
+
+            log?.WriteLine($"--- Check For Few Scores ---");
+            int fewScores = 0;
+            long targetPoint = ((DateTimeOffset)DateTime.UtcNow.AddYears(-1)).ToUnixTimeSeconds();
+            foreach (var player in beatLeaderPlayerList)
+            {
+                if (player.top10kScore.Count < 20)
+                {
+                    fewScores++;
+                    Console.WriteLine($"Player:{player.name}({player.id}) Rank: {player.rank} Scores: {player.top10kScore.Count}");
+                    toRemove.Add(player);
+                }
+            }
+            log?.WriteLine($"Few Scores: {fewScores}");
+
+            log?.WriteLine();
+
+            beatLeaderPlayerList = beatLeaderPlayerList.Except(toRemove).ToList();
+
+            //Save the pruned file
+            fileHandler.SaveScoreBoard(beatLeaderPlayerList, "BeatLeaderLeaderboard");
         }
     }
 }

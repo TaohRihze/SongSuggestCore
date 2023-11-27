@@ -6,4 +6,5 @@ namespace BeatLeaderJson
     {
         public List<SongSuggestSong> songs;
     }
+
 }

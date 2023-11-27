@@ -112,12 +112,9 @@ namespace Actions
             bool validatedScore = false;
             if (playerSongValue == 0) validatedScore = true;
             if (originSongCandidate.pp < playerSongValue * data.betterAccCap && originSongCandidate.pp > playerSongValue * data.worseAccCap) validatedScore = true;
-            if (!validatedScore) return false;
+            if (!validatedScore) return false; //Other checks could be later, hence the return for this section.
 
-
-            //data.manager.linkedPlayers++; //Consider Scrapping or another way to keep track of this ...
-            //Count validated songs    
-            return true;
+            return true; //All checks passed
         }
     }
 }

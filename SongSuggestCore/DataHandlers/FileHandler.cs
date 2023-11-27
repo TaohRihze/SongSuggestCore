@@ -10,7 +10,7 @@ using Data;
 using SongSuggestNS;
 using Settings;
 using PlaylistJson;
-using LocalScores;
+using PlayerScores;
 using AccSaberData;
 
 namespace FileHandling
@@ -86,12 +86,27 @@ namespace FileHandling
             return JsonConvert.DeserializeObject<List<LocalPlayerScore>>(loadedString, serializerSettings);
         }
 
-        //Save Active Players Data
+        //Save Active Players Local Scores
         public void SaveLocalScores(List<LocalPlayerScore> localScores)
         {
             File.WriteAllText(filePathSettings.activePlayerDataPath + "Local Scores.json", JsonConvert.SerializeObject(localScores));
         }
 
+        //Load Active Players Beat Leader Scores
+        public List<BeatLeaderPlayerScore> LoadBeatLeaderScores()
+        {
+            string activePlayer = songSuggest.activePlayerID;
+            if (!File.Exists(filePathSettings.activePlayerDataPath + $"BL{activePlayer}.json")) SaveBeatLeaderScores(new List<BeatLeaderPlayerScore>());
+            String loadedString = File.ReadAllText(filePathSettings.activePlayerDataPath + $"BL{activePlayer}.json");
+            return JsonConvert.DeserializeObject<List<BeatLeaderPlayerScore>>(loadedString, serializerSettings);
+        }
+
+        //Save Active Players Beat Leader Data
+        public void SaveBeatLeaderScores(List<BeatLeaderPlayerScore> localScores)
+        {
+            string activePlayer = songSuggest.activePlayerID;
+            File.WriteAllText(filePathSettings.activePlayerDataPath + $"BL{activePlayer}.json", JsonConvert.SerializeObject(localScores));
+        }
 
         //Is there a player Refresh File
         public Boolean CheckPlayerRefresh()

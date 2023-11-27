@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace LocalScores
+namespace PlayerScores
 {
     public class LocalPlayerScore
     {

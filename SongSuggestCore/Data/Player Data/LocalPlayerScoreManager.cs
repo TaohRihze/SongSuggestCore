@@ -1,10 +1,9 @@
-﻿using Curve;
-using SongSuggestNS;
+﻿using SongSuggestNS;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace LocalScores
+namespace PlayerScores
 {
     //Stores and Handles local recorded scores when active.
     //Saves best score on each song since activation
@@ -12,13 +11,13 @@ namespace LocalScores
     {
         public bool updated { get; set; }
         public SongSuggest songSuggest { get; set; }
-        public List<LocalPlayerScore> localScores;
+        public List<LocalPlayerScore> playerScores;
 
         //Accuracy is a value of 0 to 1
         public void AddScore(string songID, double accuracy)
         {
             //Check if there is a local score and it needs updating
-            var matchingScores = localScores.Where(c => c.SongID == songID).ToList();
+            var matchingScores = playerScores.Where(c => c.SongID == songID).ToList();
 
             //Check if matching scores are obsolette and either remove any obsolette scores, or if current are better mark return.
             //Later this might need handling of multiple scores on same song, and remove oldest/worst depending on settings.
@@ -30,7 +29,7 @@ namespace LocalScores
                     //For now remove better scores, might keep multiple scores later
                     if (score.Accuracy < accuracy)
                     {
-                        localScores.Remove(score);
+                        playerScores.Remove(score);
                         updated = true;
                     }
                     else returnWhenDone = true;
@@ -46,19 +45,19 @@ namespace LocalScores
                 Accuracy = accuracy,
                 TimeSet = DateTime.UtcNow
             };
-            localScores.Add(tmpScore);
+            playerScores.Add(tmpScore);
             updated = true;
         }
 
         public void Load()
         {
-            localScores = songSuggest.fileHandler.LoadLocalScores();
+            playerScores = songSuggest.fileHandler.LoadLocalScores();
         }
 
         public void Save()
         {
             songSuggest.log?.WriteLine($"Saving Score");
-            songSuggest.fileHandler.SaveLocalScores(localScores);
+            songSuggest.fileHandler.SaveLocalScores(playerScores);
             updated = false;
         }
 
@@ -70,7 +69,7 @@ namespace LocalScores
 
         public List<string> GetScores(SongCategory songCategory)
         {
-            var songs = localScores
+            var songs = playerScores
                 .Select(c => c.SongID)
                 .Where(c => songSuggest.songLibrary.HasAnySongCategory(c, songCategory))    //Select scores from Leaderboard with at least 1 match
                 .ToList();                                                                  //Create the List needed
@@ -79,7 +78,7 @@ namespace LocalScores
 
         public double GetAccuracy(string songID)
         {
-            var score = localScores.Where(c => c.SongID == songID)
+            var score = playerScores.Where(c => c.SongID == songID)
                 .OrderByDescending(c => c.Accuracy)
                 .Select(c => c.Accuracy);
 
@@ -89,7 +88,7 @@ namespace LocalScores
 
         public DateTime GetTimeSet(string songID)
         {
-            var score = localScores.Where(c => c.SongID == songID)
+            var score = playerScores.Where(c => c.SongID == songID)
                 .OrderByDescending(c => c.TimeSet)
                 .Select(c => c.TimeSet);
 

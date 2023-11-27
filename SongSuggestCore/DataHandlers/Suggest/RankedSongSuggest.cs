@@ -62,7 +62,7 @@ namespace Actions
 
         //Add Filler songs if player has a low amount of source songs
         int targetFillers = 10;
-        int minPlays = 40;
+        int minPlays = 20;
 
         //Value for how many spots must be expected to be improved before being shown in suggestions (unplayed songs are always shown)
         int improveSpots = 5;
@@ -527,9 +527,10 @@ namespace Actions
         {
             List<string> ignoreSongs = new List<string>();
 
-            if (suggestSM.leaderboardType == LeaderboardType.ScoreSaber)
+            if (suggestSM.leaderboardType == LeaderboardType.ScoreSaber || suggestSM.leaderboardType == LeaderboardType.BeatLeader)
             {
-                List<String> activePlayersPPSortedSongs = songSuggest.activePlayer.scores.Values.OrderByDescending(p => p.pp).ToList().Select(p => p.songID).ToList();
+                //List<String> activePlayersPPSortedSongs = songSuggest.activePlayer.scores.Values.OrderByDescending(p => p.pp).ToList().Select(p => p.songID).ToList();
+                var activePlayersPPSortedSongs = suggestSM.PlayerScoresIDs().OrderByDescending(c => suggestSM.PlayerScoreValue(c)).ToList();
 
                 int suggestedSongRank = 0;
                 foreach (string songID in sortedSuggestions)
