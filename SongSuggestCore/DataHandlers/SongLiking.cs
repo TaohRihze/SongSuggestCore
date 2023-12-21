@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using SongSuggestNS;
+using SongLibraryNS;
 
 namespace BanLike
 {
@@ -50,7 +51,8 @@ namespace BanLike
             if (IsLiked(songID)) RemoveLike(songID);
             likedSongs.Add(new SongLike { 
                 activated = DateTime.UtcNow, 
-                songID = songID 
+                songID = songID,
+                songName = songSuggest.songLibrary.GetDisplayName((ScoreSaberID)songID)
             });
             Save();
         }

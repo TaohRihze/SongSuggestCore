@@ -189,7 +189,7 @@ namespace WebDownloading
         }
 
         //Generic web puller for BeatLeader songScore
-        public BeatLeaderScore GetBeatLeaderScore(String songID)
+        public BeatLeaderScore GetBeatLeaderScore(SongID songID)
         {
             try
             {
@@ -231,6 +231,27 @@ namespace WebDownloading
             return new ScoresCompact();
         }
 
+        //BeatLeader last updated Leaderboard Time
+        public long GetBeatLeaderLeaderboardUpdateTime()
+        {
+            string webString = "";
+            try
+            {
+                _BeatLeaderThrottler.Call();
+                //We grab oldest scores first, so updates are performed chronological
+                //https://api.beatleader.xyz/songsuggest/refreshTime
+                String playerID = songSuggest.activePlayerID;
+                webString = $"https://api.beatleader.xyz/songsuggest/refreshTime";
+                String updated = client.DownloadString(webString);
+                return JsonConvert.DeserializeObject<long>(updated, serializerSettings);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                songSuggest.log?.WriteLine($"Error getting: {webString}");
+            }
+            return 0;
+        }
 
 
         //Beatleader Leaderboard

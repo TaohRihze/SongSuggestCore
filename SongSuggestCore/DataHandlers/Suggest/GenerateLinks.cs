@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using LinkedData;
+using SongLibraryNS;
 
 namespace Actions
 {
@@ -108,7 +109,7 @@ namespace Actions
             if (!data.originSongIDs.Contains(originSongCandidate.songID)) return false;
 
             //Score validation check, we need to fail only if the song is not unplayed (0 value), and is outside the given limits. Single lining this is prone to errors.
-            double playerSongValue = data.suggestSM.PlayerScoreValue(originSongCandidate.songID);
+            double playerSongValue = data.suggestSM.PlayerScoreValue((ScoreSaberID)originSongCandidate.songID); //**Needs to handle SongID's in the future, for now ScoreSaber only
             bool validatedScore = false;
             if (playerSongValue == 0) validatedScore = true;
             if (originSongCandidate.pp < playerSongValue * data.betterAccCap && originSongCandidate.pp > playerSongValue * data.worseAccCap) validatedScore = true;

@@ -17,7 +17,7 @@ namespace FileHandling
 {
     public class FileHandler
     {
-        private JsonSerializerSettings serializerSettings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
+        private JsonSerializerSettings serializerSettings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Ignore };
 
         public SongSuggest songSuggest { get; set; }
         public FilePathSettings filePathSettings { get; set; }
@@ -33,22 +33,16 @@ namespace FileHandling
         //Save the known Songs in the Library
         public void SaveSongLibrary(List<Song> songLibrary)
         {
-            File.WriteAllText(filePathSettings.songLibraryPath + "SongLibrary.json", JsonConvert.SerializeObject(songLibrary));
+            File.WriteAllText(filePathSettings.songLibraryPath + "SongLibrary.json", JsonConvert.SerializeObject(songLibrary,serializerSettings));
         }
 
-        ////Add the songs from a library from the disc to the to the active library, and if new songs was added save the active library.
-        //public void AddSongLibrary(String path)
-        //{
-        //    String songLibraryJSON = File.ReadAllText(path);
-        //    songSuggest.songLibrary.AddLibrary(JsonConvert.DeserializeObject<List<Song>>(songLibraryJSON, serializerSettings));
-        //}
-
+        //Save a Playlist to a bplist (json format)
         public void SavePlaylist(String playlistString, String fileName)
         {
             File.WriteAllText(filePathSettings.playlistPath + fileName + ".bplist", playlistString);
         }
 
-        //Load Playlist json
+        //Load a bplist playlist (json format)
         public Playlist LoadPlaylist(String fileName)
         {
             if (!File.Exists(filePathSettings.playlistPath + fileName + ".bplist")) SavePlaylist(new Playlist(), fileName);
@@ -153,6 +147,25 @@ namespace FileHandling
         {
             string fileName = $"{filePathSettings.likedSongsPath}{scoreBoardName}.json";
             File.WriteAllText(fileName, JsonConvert.SerializeObject(players));
+        }
+
+        public List<T> LoadScoreBoard<T>(string scoreBoardName) where T : Top10kPlayer, new()
+        {
+            string fileName = $"{filePathSettings.likedSongsPath}{scoreBoardName}.json";
+
+            if (!File.Exists(fileName))
+            {
+                SaveScoreBoard(new List<T>(), scoreBoardName);
+            }
+
+            string leaderboardJson = File.ReadAllText(fileName);
+            return JsonConvert.DeserializeObject<List<T>>(leaderboardJson, serializerSettings);
+        }
+
+        public void SaveScoreBoard<T>(List<T> scoreBoard, string scoreBoardName)
+        {
+            string fileName = $"{filePathSettings.likedSongsPath}{scoreBoardName}.json";
+            File.WriteAllText(fileName, JsonConvert.SerializeObject(scoreBoard, serializerSettings));
         }
 
         public Boolean LinkedDataExist()

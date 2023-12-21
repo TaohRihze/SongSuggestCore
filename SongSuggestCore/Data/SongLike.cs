@@ -6,5 +6,6 @@ namespace BanLike
     {
         public DateTime activated { get; set; }
         public String songID { get; set; }
+        public String songName { get; set; }
     }
 }

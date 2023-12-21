@@ -4,7 +4,7 @@ using System.Linq;
 using LinkedData;
 using SongSuggestNS;
 using Curve;
-using ScoreSabersJson;
+using SongLibraryNS;
 
 namespace Actions
 {
@@ -15,27 +15,21 @@ namespace Actions
         public ScoreLocation scoreLocation { get; set; } = ScoreLocation.ScoreSaber;
         public LeaderboardType leaderboardType { get; set; } = LeaderboardType.ScoreSaber;
 
-        public List<String> PlayerScoresIDs()
+        //Return all the players SongIDs
+        public List<SongID> PlayerScoresIDs()
         {
             switch (scoreLocation)
             {
                 case ScoreLocation.ScoreSaber:
-                    return songSuggest.activePlayer.scores.Values
-                        .Select(c => c.songID)
-                        .Intersect(songSuggest.songLibrary.GetAllRankedSongIDs(LeaderboardSongCategory()))
+                    var songID = songSuggest.activePlayer.scores.Values
+                        .Select(c => SongLibrary.StringIDToSongID(c.songID,SongIDType.ScoreSaber))
+                        .Where(c => SongLibrary.HasAnySongCategory(c,LeaderboardSongCategory()))
                         .ToList();
+                    return songID;
                 case ScoreLocation.LocalScores:
                     return songSuggest.localScores.GetScores(LeaderboardSongCategory());
-                //Temporary Hardcoded to the 20 selected scores of the BeatLeader scores
                 case ScoreLocation.BeatLeader:
                     return songSuggest.beatLeaderScores.GetScores(LeaderboardSongCategory());
-                    
-                    //return Leaderboard()
-                    //    .top10kPlayers
-                    //    .Where(c => songSuggest.activePlayerID == c.id)
-                    //    .SelectMany(c => c.top10kScore)
-                    //    .Select(c => c.songID)
-                    //    .ToList();
             }
 
             //Unknown handling detected
@@ -43,8 +37,9 @@ namespace Actions
         }
 
         //Returns the value of a songID .. if song is unknown 0 is returned.
-        public double PlayerScoreValue(string songID)
+        public double PlayerScoreValue(SongID songID)
         {
+            Song song = SongLibrary.SongIDToSong(songID);
 
             //Return recorded scores if leaderboard is cached, else calculate
             if (!(scoreLocation == ScoreLocation.LocalScores))
@@ -54,20 +49,11 @@ namespace Actions
                 switch (leaderboardType)
                 {
                     case LeaderboardType.ScoreSaber:
-                        if (!songSuggest.activePlayer.scores.ContainsKey(songID)) return 0;
-                        return songSuggest.activePlayer.scores[songID].pp;
-                    //Temporary Hardcoded to the 20 selected scores of the BeatLeader scores
+                        if (!songSuggest.activePlayer.scores.ContainsKey(song.scoreSaberID)) return 0;
+                        return songSuggest.activePlayer.scores[song.scoreSaberID].pp;
                     case LeaderboardType.BeatLeader:
-                        var playerScore = songSuggest.beatLeaderScores.playerScores.Find(c => c.SongID == songID);
+                        var playerScore = songSuggest.beatLeaderScores.playerScores.Find(c => c.SongID == song.beatLeaderID);
                         return (playerScore != null) ? playerScore.PP:0;
-
-                        //return (double) Leaderboard()
-                        // .top10kPlayers
-                        //.Where(c => songSuggest.activePlayerID == c.id)
-                        //.SelectMany(c => c.top10kScore)
-                        //.Where(c => c.songID == songID)
-                        //.First()
-                        //.pp;
                 }
             }
 
@@ -78,20 +64,20 @@ namespace Actions
 
         //Returns the acc value of a song, if song .. if song is unknown 0 is returned.
         //Acc is 0 to 1.
-        public double PlayerAccuracyValue(string songID)
+        public double PlayerAccuracyValue(SongID songID)
         {
+            Song song = SongLibrary.SongIDToSong(songID);
+
             switch (scoreLocation)
             {
                 case ScoreLocation.ScoreSaber:
-                    if (!songSuggest.activePlayer.scores.ContainsKey(songID)) return 0;
-                    return songSuggest.activePlayer.scores[songID].accuracy / 100;
+                    if (!songSuggest.activePlayer.scores.ContainsKey(song.scoreSaberID)) return 0;
+                    return songSuggest.activePlayer.scores[song.scoreSaberID].accuracy / 100;
                 case ScoreLocation.LocalScores:
-                    return songSuggest.localScores.GetAccuracy(songID);
-                //Temporary Workaround
+                    return songSuggest.localScores.GetAccuracy(song.scoreSaberID); //**Needs updating when local scores moves to internalID, but for now its scoreSaberIDs
                 case ScoreLocation.BeatLeader:
-                    var playerScore = songSuggest.beatLeaderScores.playerScores.Find(c => c.SongID == songID);
+                    var playerScore = songSuggest.beatLeaderScores.playerScores.Find(c => c.SongID == song.beatLeaderID);
                     return (playerScore != null) ? playerScore.Accuracy : 0;
-                    //return 0.5;
             }
 
             //Unknown handling detected
@@ -99,17 +85,19 @@ namespace Actions
         }
 
         //Returns the Time of when a score was set.
-        internal DateTime PlayerScoreDate(string songID)
+        internal DateTime PlayerScoreDate(SongID songID)
         {
+            Song song = SongLibrary.SongIDToSong(songID);
+
             switch (scoreLocation)
             {
                 case ScoreLocation.ScoreSaber:
-                    if (!songSuggest.activePlayer.scores.ContainsKey(songID)) return DateTime.MinValue;
-                    return songSuggest.activePlayer.scores[songID].timeSet;
+                    if (!songSuggest.activePlayer.scores.ContainsKey(song.scoreSaberID)) return DateTime.MinValue;
+                    return songSuggest.activePlayer.scores[song.scoreSaberID].timeSet;
                 case ScoreLocation.LocalScores:
-                    return songSuggest.localScores.GetTimeSet(songID);
+                    return songSuggest.localScores.GetTimeSet(song.scoreSaberID); //**Update to send SongID
                 case ScoreLocation.BeatLeader:
-                    var playerScore = songSuggest.beatLeaderScores.playerScores.Find(c => c.SongID == songID);
+                    var playerScore = songSuggest.beatLeaderScores.playerScores.Find(c => c.SongID == song.beatLeaderID);
                     return (playerScore != null) ? playerScore.TimeSet : DateTime.MinValue;
 
             }
@@ -118,24 +106,26 @@ namespace Actions
             throw new InvalidOperationException($"Unknown PlayerScoreDate Source found: {scoreLocation}");
         }
 
-        public List<String> LikedSongs()
+        public List<SongID> LikedSongs()
         {
             var allLikedSongs = songSuggest.songLiking.GetLikedIDs();
-            var allSourceSongs = songSuggest.songLibrary.GetAllRankedSongIDs(LeaderboardSongCategory());
+            var allSourceSongs = songSuggest.songLibrary.GetAllRankedSongIDs(LeaderboardSongCategory()).Select(c => c.Value).ToList();
 
-            return allLikedSongs.Intersect(allSourceSongs).ToList();
+            return SongLibrary.StringIDToSongID(allLikedSongs.Intersect(allSourceSongs).ToList(),SongIDType.ScoreSaber); //**Needs rewrite to store SongLibrary in Internal ID format and return those direct.
         }
 
         //Returns the calculated value of a songID .. unknown songs got 0 accuracy so 0 is returned.
-        public double CalculatedScore(string songID, double accuracy)
+        public double CalculatedScore(SongID songID, double accuracy)
         {
+            Song song = SongLibrary.SongIDToSong(songID);
+
             switch (leaderboardType)
             {
                 case LeaderboardType.ScoreSaber:
-                    double starRating = songSuggest.songLibrary.songs[songID].starScoreSaber;
+                    double starRating = song.starScoreSaber;
                     return ScoreSaberCurve.PP(accuracy, starRating);
                 case LeaderboardType.AccSaber:
-                    double complexityRating = songSuggest.songLibrary.songs[songID].complexityAccSaber;
+                    double complexityRating = song.complexityAccSaber;
                     double score = AccSaberCurve.AP(accuracy, complexityRating);
                     return score;
             }

@@ -7,7 +7,7 @@ using LinkedData;
 using Settings;
 using SongSuggestNS;
 using BanLike;
-using ScoreSabersJson;
+using SongLibraryNS;
 
 namespace Actions
 {
@@ -152,6 +152,7 @@ namespace Actions
             //----- Console Writeline for Debug -----
             songSuggest.log?.WriteLine($"Players Linked: {linkedPlayers}");
             songSuggest.log?.WriteLine($"Songs Linked: {linkedSongs}");
+            songSuggest.log?.WriteLine($"Unique Songs Found: {filteredSuggestions.Count}");
             songSuggest.log?.WriteLine($"Playlist Generation Done: {timer.ElapsedMilliseconds}ms");
 
             timer.Stop();
@@ -257,7 +258,7 @@ namespace Actions
         //Goal here is to get a good sample of a players songs that are not banned. The goal is try and find originSongsCount candidates to represent a player.
         //We filter out round up 25% worst scores (keeping at least 1) to allow progression on actual scores on lower song counts by filtering bad fits earlier
         //Then we filter out the requested portion of low accuracy songs.
-        public List<String> SelectPlayedOriginSongs()
+        public List<SongID> SelectPlayedOriginSongs()
         {
             double maxKeepPercentage = 0.75;                                                //Percent of plays to keep on players with low playcount (Rounding is handled locally)
 
@@ -335,7 +336,7 @@ namespace Actions
                 {
                     var song = songSuggest.songLibrary.songs[songID];
                     var songCategory = song.songCategory & suggestSM.LeaderboardSongCategory();
-                    var songName = songSuggest.songLibrary.GetDisplayName(songID);
+                    var songName = songSuggest.songLibrary.GetDisplayName((ScoreSaberID)songID);
                     songSuggest.log?.WriteLine($"SongCategory: {songCategory,-16}   Score: {suggestSM.PlayerScoreValue(songID),8:N2}    {songName}");
                 }
                 else songSuggest.log?.WriteLine($"{songID}");
@@ -355,10 +356,10 @@ namespace Actions
             targetSongs.SetStyle(originSongs);
 
             //New test to try and guess PP
-            targetSongs.SetPP(songSuggest);
+            //targetSongs.SetPP(songSuggest);
 
             //New test to compare local group vs global group stuff
-            targetSongs.SetLocalPP(songSuggest);
+            //targetSongs.SetLocalPP(songSuggest);
         }
 
         //Takes the orderes suggestions and apply the filter values to their ranks, and create the nameplate orderings
@@ -480,16 +481,22 @@ namespace Actions
             //Filter out ignoreSongs before making the playlist.
             //Get the ignore lists ready (permaban, ban, and improved within X days, not improveable by X ranks)
             songSuggest.status = "Preparing Ignore List";
-            List<String> ignoreSongs = CreateIgnoreLists(ignorePlayedAll ? -1 : ignorePlayedDays);
-            filteredSuggestions = sortedSuggestions.Where(s => !ignoreSongs.Contains(s)).ToList();
+
+            List<string> ignoreSongs = CreateIgnoreLists(ignorePlayedAll ? -1 : ignorePlayedDays)
+                .Select(c => c.Value) //**Return SongId to String for now
+                .ToList();
+
+            filteredSuggestions = sortedSuggestions
+                .Except(ignoreSongs)
+                .ToList();
         }
 
         //Create a List of songID's to filter out. Consider splitting it so Permaban does not get links, while
         //standard temporary banned, and recently played gets removed after.
         //Send -1 if all played should be ignored, else amount of days to ignore.
-        public List<String> CreateIgnoreLists(int ignoreDays)
+        public List<SongID> CreateIgnoreLists(int ignoreDays)
         {
-            List<String> ignoreSongs = new List<String>();
+            List<SongID> ignoreSongs = new List<SongID>();
 
             //Ignore recently/all played songs
             //Add either all played songs
@@ -498,7 +505,6 @@ namespace Actions
             if (ignoreDays == -1)
             {
                 ignoreSongs.AddRange(playedSongs);
-                //ignoreSongs.AddRange(songSuggest.activePlayer.scores.Keys);
             }
             //Or the songs only played within a given time periode
             else
@@ -511,12 +517,14 @@ namespace Actions
             }
 
             //Add the banned songs to the ignoresong list if not already on it.
-            ignoreSongs = ignoreSongs.Union(songSuggest.songBanning.GetBannedIDs()).ToList();
+            ignoreSongs = ignoreSongs
+                .Union(SongLibrary.StringIDToSongID(songSuggest.songBanning.GetBannedIDs(),SongIDType.ScoreSaber))
+                .ToList();
 
             //Add songs that is not expected to be improveable by X ranks
             if (ignoreNonImproveable)
             {
-                ignoreSongs.AddRange(LeaderboardNonImproveableFiltering());
+                ignoreSongs.AddRange(SongLibrary.StringIDToSongID(LeaderboardNonImproveableFiltering(),SongIDType.ScoreSaber));
             }
 
             return ignoreSongs;
@@ -527,10 +535,11 @@ namespace Actions
         {
             List<string> ignoreSongs = new List<string>();
 
+            //Default Leaderboards
             if (suggestSM.leaderboardType == LeaderboardType.ScoreSaber || suggestSM.leaderboardType == LeaderboardType.BeatLeader)
             {
                 //List<String> activePlayersPPSortedSongs = songSuggest.activePlayer.scores.Values.OrderByDescending(p => p.pp).ToList().Select(p => p.songID).ToList();
-                var activePlayersPPSortedSongs = suggestSM.PlayerScoresIDs().OrderByDescending(c => suggestSM.PlayerScoreValue(c)).ToList();
+                var activePlayersPPSortedSongs = suggestSM.PlayerScoresIDs().OrderByDescending(c => suggestSM.PlayerScoreValue(c)).Select(c => c.Value).ToList();
 
                 int suggestedSongRank = 0;
                 foreach (string songID in sortedSuggestions)
@@ -552,15 +561,16 @@ namespace Actions
                     if (!suggestSM.LeaderboardSongCategory().HasFlag(category)) continue;
 
                     //Get suggestions for the category
-                    List<string> activeSongs = songSuggest.songLibrary.GetAllRankedSongIDs(category);
+                    List<string> activeSongs = songSuggest.songLibrary.GetAllRankedSongIDs(category).Select(c=>c.Value).ToList();
                     List<string> categorySortedSuggestions = sortedSuggestions
                                     .Intersect(activeSongs)
                                     .ToList();
                     //Get the players scores for the category and order them by best first
                     List<String> categorySortedPlayerScores = suggestSM.PlayerScoresIDs()
-                                    .Where(c => songSuggest.songLibrary.HasAnySongCategory(c, category))
+                                    .Where(c => SongLibrary.HasAnySongCategory(c, category))
+                                    .Select(c => c.Value) //**Return SongID to String for now
                                     .Intersect(activeSongs)
-                                    .OrderByDescending(c => suggestSM.PlayerScoreValue(c))
+                                    .OrderByDescending(c => suggestSM.PlayerScoreValue((ScoreSaberID)c)) //**Needs to handle any SongID, for now ScoreSaber
                                     .ToList();
                     //List in both (ones that might be non improveable)
                     List<String> commonSongIDs = categorySortedSuggestions.Intersect(categorySortedPlayerScores).ToList();
@@ -582,7 +592,7 @@ namespace Actions
                     {
                         int playerRank = categorySortedPlayerScores.IndexOf(song) + 1;
                         int suggestRank = categorySortedSuggestions.IndexOf(song) + 1;
-                        string songInfo = songSuggest.songLibrary.GetName(song);
+                        string songInfo = songSuggest.songLibrary.GetName((ScoreSaberID)song);
                         songSuggest.log?.WriteLine($"Player Rank: {playerRank,3}   Suggest Rank: {suggestRank,3}   Song: {songInfo}");
 
                     }
@@ -610,7 +620,7 @@ namespace Actions
             songSuggestIDs = filteredSuggestions.Take(playlistLength).ToList();
 
             PlaylistManager playlist = new PlaylistManager(settings.PlaylistSettings) { songSuggest = songSuggest };
-            playlist.AddSongs(songSuggestIDs);
+            playlist.AddSongs(songSuggestIDs.Select(c => (SongID)(ScoreSaberID)c).ToList());
             playlist.Generate();
         }
     }

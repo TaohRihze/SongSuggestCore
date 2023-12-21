@@ -20,7 +20,7 @@ namespace Actions
         {
             ActivePlayer activePlayer = songSuggest.activePlayer;
             WebDownloader webDownloader = songSuggest.webDownloader;
-            SongLibrary songLibrary = songSuggest.songLibrary;
+            SongLibraryInstance songLibrary = songSuggest.songLibrary;
 
             //Have the active player verify the active version and the wanted version is the same, else load any cached version or present an empty user
             activePlayer.LoadActivePlayer(songSuggest);
@@ -57,36 +57,26 @@ namespace Actions
                 //Parse Player Scores
                 foreach (PlayerScore score in playerScoreCollection.playerScores)
                 {
-                    if (true)//(score.leaderboard.ranked)
+                    //Update or add song to library via PlayerScore object.
+                    songLibrary.UpsertSong(score);
+
+                    //Some scores may not have a max score listed, so we need to verify this first and set it
+                    if (score.leaderboard.maxScore == 0) score.leaderboard.maxScore = ManualData.SongMaxScore($"{score.leaderboard.id}", songSuggest);
+
+                    //Create a score object from the website Score, and add it to the candidates
+                    ActivePlayerScore tmpScore = new ActivePlayerScore
                     {
-                        //attempt to add the song to the library.
-                        songLibrary.AddSong(score.leaderboard.id + "", score.leaderboard.songName, score.leaderboard.songHash, score.leaderboard.difficulty.difficulty + "",score.leaderboard.stars);
-
-
-                        //Some scores may not have a max score listed, so we need to verify this first and set it
-                        if (score.leaderboard.maxScore == 0) score.leaderboard.maxScore = ManualData.SongMaxScore($"{score.leaderboard.id}", songSuggest);
-
-                        //Create a score object from the website Score, and add it to the candidates
-                        ActivePlayerScore tmpScore = new ActivePlayerScore
-                        {
-                            songID = score.leaderboard.id + "",
-                            timeSet = score.score.timeSet,
-                            pp = score.score.pp,
-                            accuracy = 100.0*score.score.baseScore / score.leaderboard.maxScore,
-                            rankPercentile = 100.0*score.score.rank / score.leaderboard.plays,
-                            rankScoreSaber = score.score.rank,
-                            playsScoreSaber = score.leaderboard.plays
-                        };
-                        //Attempts to add the found score, if it is a duplicate with same timestamp do not load next score page
-                        //TODO: Break foreach as well
-                        if (!activePlayer.AddScore(tmpScore)) continueLoad = false;
-                    }
-                    //break if we are doing initial user search and hit the non ranked songs
-                    else if (searchmode == "top")
-                    {
-                        //songSuggest.log?.WriteLine("Hit unranked song");
-                        continueLoad = false;
-                    }
+                        songID = score.leaderboard.id + "",
+                        timeSet = score.score.timeSet,
+                        pp = score.score.pp,
+                        accuracy = 100.0*score.score.baseScore / score.leaderboard.maxScore,
+                        rankPercentile = 100.0*score.score.rank / score.leaderboard.plays,
+                        rankScoreSaber = score.score.rank,
+                        playsScoreSaber = score.leaderboard.plays
+                    };
+                    //Attempts to add the found score, if it is a duplicate with same timestamp do not load next score page
+                    //TODO: Break foreach as well
+                    if (!activePlayer.AddScore(tmpScore)) continueLoad = false;
                 }
 
                 songSuggest.log?.WriteLine("Page " + page + "/" + Math.Ceiling((double)playerScoreCollection.metadata.total / 100) + " Done.");
@@ -99,9 +89,9 @@ namespace Actions
             activePlayer.Save();
 
             //If new songs was added, save the library.
-            if (songLibrary.Updated()) songLibrary.Save();
+            if (songLibrary.Updated) songLibrary.Save();
 
-            songSuggest.log?.WriteLine("PlayerScores Count" + activePlayer.scores.Count());
+            songSuggest.log?.WriteLine("PlayerScores Count: " + activePlayer.scores.Count());
             songSuggest.activePlayer = activePlayer;
         }
     }

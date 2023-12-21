@@ -16,7 +16,7 @@ namespace SongLibraryNS
             {
                 if (_songID == null)
                 {
-                    _songID = $"id{characteristic}-{difficulty}-{hash}";
+                    _songID = $"{characteristic}-{difficulty}-{hash.ToUpperInvariant()}";
                 }
                 return _songID;
             }
@@ -38,11 +38,26 @@ namespace SongLibraryNS
         public double starBeatLeader { get; set; }
         public double complexityAccSaber { get; set; }
 
-        public Song()
+        public String GetDifficultyText()
         {
+            switch (difficulty)
+            {
+                case "1":
+                    return "Easy";
+                case "3":
+                    return "Normal";
+                case "5":
+                    return "Hard";
+                case "7":
+                    return "Expert";
+                case "9":
+                    return "ExpertPlus";
+                default:
+                    return "Easy";
+            }
         }
 
-        public String GetDifficultyText()
+        public String GetCharacteristicText()
         {
             switch (difficulty)
             {

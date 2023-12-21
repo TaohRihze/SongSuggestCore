@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using SongLibraryNS;
 
 namespace PlayerScores
 {
@@ -12,6 +13,7 @@ namespace PlayerScores
         public bool updated { get; set; }
         public SongSuggest songSuggest { get; set; }
         public List<LocalPlayerScore> playerScores;
+        private SongIDType _songIDType = SongIDType.ScoreSaber; //For now Local Scores are stored in ScoreSaber ID's
 
         //Accuracy is a value of 0 to 1
         public void AddScore(string songID, double accuracy)
@@ -61,19 +63,14 @@ namespace PlayerScores
             updated = false;
         }
 
-        //public void AddScore(string songHash, string difficulty, double accuracy)
-        //{
-        //    string songID = songSuggest.songLibrary.GetID(songHash, difficulty);
-        //    AddScore(songID, accuracy);
-        //}
-
-        public List<string> GetScores(SongCategory songCategory)
+        //Returns a List of SongID's of the current ID type stored here
+        public List<SongID> GetScores(SongCategory songCategory)
         {
-            var songs = playerScores
-                .Select(c => c.SongID)
-                .Where(c => songSuggest.songLibrary.HasAnySongCategory(c, songCategory))    //Select scores from Leaderboard with at least 1 match
-                .ToList();                                                                  //Create the List needed
-             return songs;
+            var songIDs = playerScores
+                .Select(c => SongLibrary.StringIDToSongID(c.SongID, _songIDType))
+                .Where(c => SongLibrary.HasAnySongCategory(c, songCategory))    //Select scores from Leaderboard with at least 1 match
+                .ToList();                                                      //Create the List needed
+            return songIDs;
         }
 
         public double GetAccuracy(string songID)

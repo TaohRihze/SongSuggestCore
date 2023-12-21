@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using LinkedData;
 using SongSuggestNS;
 
@@ -16,7 +17,7 @@ namespace Actions
             //Manager DTO Values
             public List<string> originSongIDs { get => manager.originSongIDs; }
             public List<string> fillerSongs { get => manager.GetFillerSongs(); }
-            public List<string> playedOriginSongs { get => manager.SelectPlayedOriginSongs(); }
+            public List<string> playedOriginSongs { get => manager.SelectPlayedOriginSongs().Select(c => c.Value).ToList(); } //**Return SongID to String for now
             public List<string> ignoreSongs { get => manager.ignoreSongs; }
             public Top10kPlayers leaderboard { get => manager.suggestSM.Leaderboard(); }
             public SuggestSourceManager suggestSM { get => manager.suggestSM; }

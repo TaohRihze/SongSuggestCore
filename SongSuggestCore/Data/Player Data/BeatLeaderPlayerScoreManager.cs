@@ -3,7 +3,7 @@ using SongSuggestNS;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
+using SongLibraryNS;
 
 namespace PlayerScores
 {
@@ -52,6 +52,19 @@ namespace PlayerScores
                 //Process each found record.
                 foreach (var record in scores.data)
                 {
+                    ////Check for boosted modifiers and skip to next record if found
+                    //string modifiers = record.score.modifiers;
+                    //bool boostedModifiers = modifiers.Contains("SF") ||
+                    //                        modifiers.Contains("FS") || 
+                    //                        modifiers.Contains("GN") ||
+                    //                        modifiers.Contains("GN") ||
+                    //                        modifiers.Contains("NA") ||
+                    //                        modifiers.Contains("NB") ||
+                    //                        modifiers.Contains("NF") ||
+                    //                        modifiers.Contains("SS") ||
+                    //                        modifiers.Contains("NO");
+                    //if (boostedModifiers) continue;
+
                     var playerScore = playerScores.Find(c => c.SongID == record.leaderboard.id);
                     //Check if score is present and update its values
                     if (playerScore != null)
@@ -79,13 +92,17 @@ namespace PlayerScores
             Save();
         }
 
-        public List<string> GetScores(SongCategory songCategory)
+        public List<SongID> GetScores(SongCategory songCategory)
         {
-            var songs = playerScores
+            var stringIDs = playerScores
                 .Select(c => c.SongID)
-                .Where(c => songSuggest.songLibrary.HasAnySongCategory(c, songCategory))    //Select scores from Leaderboard with at least 1 match
-                .ToList();                                                                  //Create the List needed
-             return songs;
+                .ToList();
+
+            var songIDs = SongLibrary.StringIDToSongID(stringIDs, SongIDType.BeatLeader)
+                .Where(c => SongLibrary.HasAnySongCategory(c, songCategory)) //Select scores from Leaderboard with at least 1 match
+                .ToList();
+
+             return songIDs;
         }
 
         public double GetAccuracy(string songID)

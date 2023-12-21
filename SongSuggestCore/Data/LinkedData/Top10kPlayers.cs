@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 using SongSuggestNS;
+using SongLibraryNS;
+using Newtonsoft.Json.Converters;
 
 namespace LinkedData
 {
@@ -66,5 +68,64 @@ namespace LinkedData
             newPlayer.rank = rank;
             top10kPlayers.Add(newPlayer);
         }
+    }
+
+    public class BeatLeaderPlayersLD : Top10kPlayers
+    {
+        new public List<BeatLeaderPlayerLD> top10kPlayers = new List<BeatLeaderPlayerLD>();
+        new public void Load(string scoreBoardName)
+        {
+            top10kPlayers = songSuggest.fileHandler.LoadScoreBoard<BeatLeaderPlayerLD>(scoreBoardName);
+            GenerateTop10kSongMeta();
+        }
+
+        new public void Save(string leaderboardName)
+        {
+            songSuggest.fileHandler.SaveScoreBoard(top10kPlayers, leaderboardName);
+        }
+    }
+
+    public class BeatLeaderPlayerLD : Top10kPlayer
+    {
+        new public List<BeatLeaderScoreLD> top10kScore = new List<BeatLeaderScoreLD>();
+    }
+
+    public class BeatLeaderScoreLD : Top10kScore
+    {
+        [JsonIgnore]
+        new public BeatLeaderID songID { get; set; }
+
+        [JsonProperty("songID")]
+        public string _songID { get => songID; set => songID = value; }
+    }
+
+
+    public class ScoreSaberPlayersLD : Top10kPlayers
+    {
+        new public List<ScoreSaberPlayerLD> top10kPlayers = new List<ScoreSaberPlayerLD>();
+        new public void Load(string scoreBoardName)
+        {
+            top10kPlayers = songSuggest.fileHandler.LoadScoreBoard<ScoreSaberPlayerLD>(scoreBoardName);
+            GenerateTop10kSongMeta();
+        }
+
+        new public void Save(string leaderboardName)
+        {
+            songSuggest.fileHandler.SaveScoreBoard(top10kPlayers, leaderboardName);
+        }
+    }
+
+    public class ScoreSaberPlayerLD : Top10kPlayer
+    {
+        new public List<ScoreSaberScoreLD> top10kScore = new List<ScoreSaberScoreLD>();
+    }
+
+    public class ScoreSaberScoreLD : Top10kScore
+    {
+        [JsonIgnore]
+        new public ScoreSaberID songID { get; set; }
+
+        [JsonProperty("songID")]
+        public string _songID { get => songID; set => songID = value; }
     }
 }

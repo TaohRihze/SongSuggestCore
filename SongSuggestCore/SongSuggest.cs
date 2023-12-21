@@ -22,8 +22,9 @@ namespace SongSuggestNS
         //Default as an unset player. Dump ID here and next RefreshActivePlayer() updates it.
         public String activePlayerID { get; set; } = "-1";
         public FileHandler fileHandler { get; set; }
-        public SongLibrary songLibrary { get; set; }
+        public SongLibraryInstance songLibrary { get; set; }
         public WebDownloader webDownloader { get; set; }
+        public FilesMeta filesMeta { get; set; }
         public SongLiking songLiking { get; set; }
         public SongBanning songBanning { get; set; }
         public Top10kPlayers scoreSaberScoreBoard { get; set; }
@@ -57,17 +58,20 @@ namespace SongSuggestNS
             activePlayerID = userID;
 
             fileHandler = new FileHandler { songSuggest = this, filePathSettings = filePathSettings };
-
+            
             webDownloader = new WebDownloader { songSuggest = this };
+
+            filesMeta = fileHandler.LoadFilesMeta();
 
             //Validate file versions and checks for new data.
             ValidateCacheFiles();
 
             //Load data from disk.
 
-            songLibrary = new SongLibrary { songSuggest = this };
-            //Load Song Library from File
+            //Load Song Library from File and make it the global lookup
+            songLibrary = new SongLibraryInstance { songSuggest = this };
             songLibrary.SetLibrary(fileHandler.LoadSongLibrary());
+            songLibrary.SetActive();
 
             songLiking = new SongLiking
             {
@@ -98,14 +102,36 @@ namespace SongSuggestNS
             scoreSaberScoreBoard = new Top10kPlayers { songSuggest = this };
             scoreSaberScoreBoard.FormatName = "Score Saber";
             scoreSaberScoreBoard.Load("Top10KPlayers");
+           // UpdateIDLinks(scoreSaberScoreBoard, "");
 
             accSaberScoreBoard = new Top10kPlayers { songSuggest = this };
             accSaberScoreBoard.FormatName = "Acc Saber";
             accSaberScoreBoard.Load("AccSaberLeaderboardData");
+            //UpdateIDLinks(accSaberScoreBoard);
 
             status = "Checking loaded data for new Online Files";
 
             status = "Ready";
+        }
+
+        private void UpdateIDLinks(Top10kPlayers scoreBoard, string prefix)
+        {
+            foreach(var player in scoreBoard.top10kPlayers)
+            {
+                foreach(var score in player.top10kScore)
+                {
+                    score.songID = songLibrary.songs[$"{prefix}{score.songID.ToUpperInvariant()}"].songID;
+                }
+            }
+
+            var metaEntries = scoreBoard.top10kSongMeta.Values.ToList();
+            scoreBoard.top10kSongMeta.Clear();
+            foreach (var entry in metaEntries)
+            {
+                string id = songLibrary.songs[$"{prefix}{entry.songID.ToUpperInvariant()}"].songID;
+                entry.songID = id;
+                scoreBoard.top10kSongMeta.Add(id, entry);
+            }
         }
 
         //Validate CacheFiles and download new versions if available.
@@ -125,11 +151,11 @@ namespace SongSuggestNS
                 {
                     top10kVersion = Top10kPlayers.FormatVersion,
                     activePlayerVersion = ActivePlayer.FormatVersion,
-                    songLibraryVersion = SongLibrary.FormatVersion
+                    songLibraryVersion = SongLibraryInstance.FormatVersion
                 };
 
-                //Load web and file of last downloaded version.
-                FilesMeta diskVersion = fileHandler.LoadFilesMeta();
+                //Compare web and file versioning
+                FilesMeta diskVersion = filesMeta;
                 FilesMeta cacheFilesWebVersion = webDownloader.GetFilesMeta();
 
                 log?.WriteLine($"Version Current: {diskVersion.top10kVersion} Timestamp: {diskVersion.top10kUpdated}");
@@ -160,6 +186,7 @@ namespace SongSuggestNS
                 {
                     List<Song> songs = webDownloader.GetSongLibrary();
                     fileHandler.SaveSongLibrary(songs);
+
                     updated = true;
                     log?.WriteLine("Downloaded and Updated Song Library");
                 }
@@ -327,6 +354,7 @@ namespace SongSuggestNS
         //For now refresh request is manual.
         public void LoadBeatLeader(bool refresh)
         {
+            log?.WriteLine("Starting to load BeatLeader data");
             //Load Player Scorefile
             beatLeaderScores = new PlayerScores.BeatLeaderPlayerScoreManager();
             beatLeaderScores.songSuggest = this;
@@ -334,8 +362,14 @@ namespace SongSuggestNS
             beatLeaderScores.Refresh();
 
             //Update Leaderboard if out of date (no check currently.)
-            if (refresh) RefreshBeatLeaderLeaderBoard();
-
+            long lastUpdate = webDownloader.GetBeatLeaderLeaderboardUpdateTime();
+            DateTime lastUpdateDateTime = DateTimeOffset.FromUnixTimeSeconds(lastUpdate).DateTime;
+            log?.WriteLine($"Leaderboard Web Update Time. Unix: {lastUpdate} Time: {lastUpdateDateTime:d}");
+            if (refresh)
+            {
+                log?.WriteLine("Pulling new Leaderboard data");
+                RefreshBeatLeaderLeaderBoard();
+            }
             //Load the Leaderboard
             var leaderboard = new Top10kPlayers();
             leaderboard.FormatName = "Beat Leader";
@@ -351,17 +385,13 @@ namespace SongSuggestNS
 
             foreach (var song in standardSongs)
             {
-                songLibrary.AddSong(song);
+                songLibrary.UpsertSong(song);
             }
-
-
-
         }
 
+        //Downloads newest Leaderboard
         private void RefreshBeatLeaderLeaderBoard()
         {
-
-
             var beatLeaderPlayerList = webDownloader.GetBeatLeaderLeaderboard();
 
             //Pruning of recieved data. Hopefully this is temporary and filtering can be moved to server side.

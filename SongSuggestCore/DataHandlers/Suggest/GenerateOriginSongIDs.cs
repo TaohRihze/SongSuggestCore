@@ -12,7 +12,7 @@ namespace Actions
             //Add Liked songs.
             dto.log?.WriteLine($"Use Liked Songs: {dto.useLikedSongs}");
 
-            if (dto.useLikedSongs) originSongIDs.AddRange(dto.suggestSM.LikedSongs());
+            if (dto.useLikedSongs) originSongIDs.AddRange(dto.suggestSM.LikedSongs().Select(c => c.Value).ToList());
             int targetCount = originSongIDs.Count();
 
             dto.log?.WriteLine($"Liked Songs in list: {originSongIDs.Count()}");

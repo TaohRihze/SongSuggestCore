@@ -103,8 +103,8 @@ namespace LinkedData
             estimatedPP = songLinks.OrderByDescending(c => c.targetSongScore.pp).ToList()[songIndex].targetSongScore.pp;
 
             //Console Debug
-            String songName = songSuggest.songLibrary.GetName(songID);
-            String songDifc = songSuggest.songLibrary.GetDifficultyName(songID);
+            //String songName = songSuggest.songLibrary.GetName(songID);
+            //String songDifc = songSuggest.songLibrary.GetDifficultyName(songID);
             int totalSongs = songLinks.Count();
 
             //double playerScore = songSuggest.activePlayer.GetScore(songID);

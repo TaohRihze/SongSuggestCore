@@ -4,8 +4,8 @@ using Settings;
 using System.Linq;
 using System.Collections.Generic;
 using System;
-using System.Data;
 using Curve;
+using SongLibraryNS;
 
 namespace Actions
 {
@@ -63,25 +63,25 @@ namespace Actions
                 if (settings.reversePlaylistOrdering) selectedSongs.Reverse();
             }
 
-            playlist.AddSongs(selectedSongs);
+            playlist.AddSongs(selectedSongs.Select(c => (SongID)(ScoreSaberID)c).ToList());
 
             //Generate and save a playlist with the selected songs in the playlist.
             songSuggest.status = "Generating Playlist";
             playlist.Generate();
         }
 
-        private List<string> WeightedSort(List<string> selectedSongs)
+        private List<SongID> WeightedSort(List<SongID> selectedSongs)
         {
             if (settings.songWeighting == 0) return selectedSongs;              //Always Sorted
             if (settings.songWeighting == 1) return RandomOrder(selectedSongs); //Always Random
 
             //Default 0 value to an empty list
-            List<string> zeroValuedSongs = new List<string>();
+            List<SongID> zeroValuedSongs = new List<SongID>();
 
             //Unplayed songs -> zeroValue
             if ((settings.songSelection & (SongSortCriteria.Accuracy | SongSortCriteria.WorldPercentage | SongSortCriteria.WorldRank | SongSortCriteria.Age | SongSortCriteria.PP)) != 0)
             {
-                zeroValuedSongs = selectedSongs.Except(songSuggest.activePlayer.scores.Values.Select(c => c.songID)).ToList();
+                zeroValuedSongs = selectedSongs.Except(songSuggest.activePlayer.scores.Values.Select(c => (ScoreSaberID)c.songID)).ToList();
             }
 
             //No star rating song -> zeroValue
@@ -130,22 +130,22 @@ namespace Actions
                 });
             }
 
-            return new WeightedSelection(selectedSongPairs).GetAllRandom().Select(c => (String)c.Value).ToList();
+            return new WeightedSelection(selectedSongPairs).GetAllRandom().Select(c => (SongID)c.Value).ToList();
         }
 
         //Returns a list of all songID's that match the setting files parameters.
-        private List<String> SelectSongs()
+        private List<SongID> SelectSongs()
         {
             //Get raw lists (unplayed is only songs for selected categories that has not been played)
-            List<String> allPlayedSongs = songSuggest.activePlayer.scores.Keys.ToList();
-            List<String> allUnplayedSongs = songSuggest.songLibrary.GetAllRankedSongIDs(settings.unplayedSongCategories).Except(allPlayedSongs).ToList();
+            List<SongID> allPlayedSongs = songSuggest.activePlayer.scores.Keys.Select(c=> (SongID)(ScoreSaberID)c).ToList();
+            List<SongID> allUnplayedSongs = songSuggest.songLibrary.GetAllRankedSongIDs(settings.unplayedSongCategories).Except(allPlayedSongs).ToList();
 
             //Reduce the list to only whitelisted songs
-            List<String> whitelistedPlayedSongs = allPlayedSongs.Intersect(WhiteListPlayed(true)).ToList();
-            List<String> whitelistedUnplayedSongs = allUnplayedSongs.Intersect(WhiteListPlayed(false)).ToList();
+            List<SongID> whitelistedPlayedSongs = allPlayedSongs.Intersect(WhiteListPlayed(true)).ToList();
+            List<SongID> whitelistedUnplayedSongs = allUnplayedSongs.Intersect(WhiteListPlayed(false)).ToList();
 
             //Define active broken songs, and reduce relevant lists if needed.
-            List<String> brokenSongs = songSuggest.songLibrary.GetAllRankedSongIDs(SongCategory.BrokenDownloads);
+            List<SongID> brokenSongs = songSuggest.songLibrary.GetAllRankedSongIDs(SongCategory.BrokenDownloads);
 
             //Remove broken songs if they are not selected.
             if ((settings.playedSongCategories & SongCategory.BrokenDownloads) == 0)
@@ -158,15 +158,15 @@ namespace Actions
             }
 
             //Combine Unplayed and Oldest Lists, and remove banned songs
-            List<String> selectedSongs = whitelistedPlayedSongs.
+            List<SongID> selectedSongs = whitelistedPlayedSongs.
                 Union(whitelistedUnplayedSongs)
-                .Except(songSuggest.songBanning.GetBannedIDs())
+                .Except(songSuggest.songBanning.GetBannedIDs().Select(c => (SongID)(ScoreSaberID)c).ToList())
                 .ToList();
 
             return selectedSongs;
         }
 
-        private List<string> WhiteListPlayed(bool played)
+        private List<SongID> WhiteListPlayed(bool played)
         {
             //Prepare Song Categories, first finding the related settings, and then preparing the leaderboards active choices.
             SongCategory activeSetting = played ? settings.playedSongCategories : settings.unplayedSongCategories;
@@ -174,42 +174,42 @@ namespace Actions
             SongCategory accSaber = (SongCategory.AccSaberStandard | SongCategory.AccSaberTrue | SongCategory.AccSaberTech) & activeSetting;
 
             //Definitions of different needed comparisons before assigning correct based on played/unplayed/leaderboard.
-            Func<string, bool> validAccuracy = songID =>
-                songSuggest.activePlayer.scores.ContainsKey(songID)
-                ? settings.ignoreAccuracyEqualBelow <= songSuggest.activePlayer.scores[songID].accuracy &&
-                    settings.ignoreAccuracyEqualAbove >= songSuggest.activePlayer.scores[songID].accuracy
+            Func<SongID, bool> validAccuracy = songID =>
+                songSuggest.activePlayer.scores.ContainsKey(songID.Value)
+                ? settings.ignoreAccuracyEqualBelow <= songSuggest.activePlayer.scores[songID.Value].accuracy &&
+                    settings.ignoreAccuracyEqualAbove >= songSuggest.activePlayer.scores[songID.Value].accuracy
                 : false;
 
-            Func<string, bool> validDays = songID =>
-                songSuggest.activePlayer.scores.ContainsKey(songID)
-                ? settings.ignorePlayedDaysBelow < (DateTime.UtcNow - songSuggest.activePlayer.scores[songID].timeSet).TotalDays &&
-                    settings.ignorePlayedDaysAbove > (DateTime.UtcNow - songSuggest.activePlayer.scores[songID].timeSet).TotalDays
+            Func<SongID, bool> validDays = songID =>
+                songSuggest.activePlayer.scores.ContainsKey(songID.Value)
+                ? settings.ignorePlayedDaysBelow < (DateTime.UtcNow - songSuggest.activePlayer.scores[songID.Value].timeSet).TotalDays &&
+                    settings.ignorePlayedDaysAbove > (DateTime.UtcNow - songSuggest.activePlayer.scores[songID.Value].timeSet).TotalDays
                 : false;
 
-            Func<string, bool> scoreSaberStar = songID =>
-                settings.ignoreBeatSaberStarBelow < songSuggest.songLibrary.songs[songID].starScoreSaber &&
-                settings.ignoreBeatSaberStarAbove > songSuggest.songLibrary.songs[songID].starScoreSaber;
+            Func<SongID, bool> scoreSaberStar = songID =>
+                settings.ignoreBeatSaberStarBelow < songSuggest.songLibrary.songs[songID.UniqueString].starScoreSaber &&
+                settings.ignoreBeatSaberStarAbove > songSuggest.songLibrary.songs[songID.UniqueString].starScoreSaber;
 
-            Func<string, bool> accSaberComplexity = songID =>
-                settings.ignoreAccSaberComplexityBelow < songSuggest.songLibrary.songs[songID].complexityAccSaber &&
-                settings.ignoreAccSaberComplexityAbove > songSuggest.songLibrary.songs[songID].complexityAccSaber;
+            Func<SongID, bool> accSaberComplexity = songID =>
+                settings.ignoreAccSaberComplexityBelow < songSuggest.songLibrary.songs[songID.UniqueString].complexityAccSaber &&
+                settings.ignoreAccSaberComplexityAbove > songSuggest.songLibrary.songs[songID.UniqueString].complexityAccSaber;
 
-            Func<string, bool> alwaysValid = _ => true;
+            Func<SongID, bool> alwaysValid = _ => true;
 
             //Assigns the lookup function depending on songs are Played or Unplayed for playerdependant scores
             var days = played ? validDays : alwaysValid;
             var accuracy = played ? validAccuracy : alwaysValid;
 
             //Gets the whitelists from the different leaderboards and combine them.
-            List<String> scoreSaberWhiteList = WhiteListLeaderboard(scoreSaber, days, accuracy, scoreSaberStar);
-            List<String> accSaberWhiteList = WhiteListLeaderboard(accSaber, days, accuracy, accSaberComplexity);
+            List<SongID> scoreSaberWhiteList = WhiteListLeaderboard(scoreSaber, days, accuracy, scoreSaberStar);
+            List<SongID> accSaberWhiteList = WhiteListLeaderboard(accSaber, days, accuracy, accSaberComplexity);
 
             //Combine the legal whitelist and return them.
             return scoreSaberWhiteList.Union(accSaberWhiteList).ToList();
         }
 
         //Returns a WhiteList of the selected songs based on the filled Lamda's. Should help separate defining and applying filters from the middle Layer.
-        private List<string> WhiteListLeaderboard(SongCategory category, Func<string, bool> days, Func<string, bool> accuracy, Func<string, bool> leaderBoardRating)
+        private List<SongID> WhiteListLeaderboard(SongCategory category, Func<SongID, bool> days, Func<SongID, bool> accuracy, Func<SongID, bool> leaderBoardRating)
         {
             var songs = songSuggest.songLibrary.GetAllRankedSongIDs(category)
                 .Where(days)
@@ -219,7 +219,7 @@ namespace Actions
             return songs;
         }
 
-        private List<String> SortSongs(List<String> songs, SongSortCriteria sort)
+        private List<SongID> SortSongs(List<SongID> songs, SongSortCriteria sort)
         {
             switch (sort)
             {
@@ -254,14 +254,14 @@ namespace Actions
         //All Sortings are best to worst.
 
         //Sort the selection by Accuracy
-        private List<String> Acc(List<String> selectedSongs)
+        private List<SongID> Acc(List<SongID> selectedSongs)
         {
             //Lets find set scores and order them
             var setScores = selectedSongs
-                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID))
-                .Select(songID => songSuggest.activePlayer.scores[songID])
+                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID.Value))
+                .Select(songID => songSuggest.activePlayer.scores[songID.Value])
                 .OrderByDescending(score => score.accuracy)
-                .Select(score => score.songID)
+                .Select(score => (SongID)(ScoreSaberID)score.songID)
                 .ToList();
 
             //Any non found scores (unplayed if added) are found here
@@ -274,14 +274,14 @@ namespace Actions
         }
 
         //Sort the selection by Age
-        private List<String> Age(List<String> selectedSongs)
+        private List<SongID> Age(List<SongID> selectedSongs)
         {
             //Lets find set scores and order them
             var setScores = selectedSongs
-                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID))
-                .Select(songID => songSuggest.activePlayer.scores[songID])
+                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID.Value))
+                .Select(songID => songSuggest.activePlayer.scores[songID.Value])
                 .OrderByDescending(score => score.timeSet)
-                .Select(score => score.songID)
+                .Select(score => (SongID)(ScoreSaberID)score.songID)
                 .ToList();
 
             //Any non found scores (unplayed if added) are found here
@@ -294,14 +294,14 @@ namespace Actions
         }
 
         //Sort the selection by PP
-        private List<String> PP(List<String> selectedSongs)
+        private List<SongID> PP(List<SongID> selectedSongs)
         {
             //Lets find set scores and order them
             var setScores = selectedSongs
-                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID))
-                .Select(songID => songSuggest.activePlayer.scores[songID])
+                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID.Value))
+                .Select(songID => songSuggest.activePlayer.scores[songID.Value])
                 .OrderByDescending(score => score.pp)
-                .Select(score => score.songID)
+                .Select(score => (SongID)(ScoreSaberID)score.songID)
                 .ToList();
 
             //Any non found scores (unplayed if added) are found here
@@ -314,14 +314,14 @@ namespace Actions
         }
 
         //Sort the selection by AP
-        private List<String> AP(List<String> selectedSongs)
+        private List<SongID> AP(List<SongID> selectedSongs)
         {
             //Lets find set scores and order them
             var setScores = selectedSongs
-                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID))
-                .Select(songID => songSuggest.activePlayer.scores[songID])
-                .OrderByDescending(score => AccSaberCurve.AP(score.accuracy/100, songSuggest.songLibrary.songs[score.songID].complexityAccSaber))
-                .Select(score => score.songID)
+                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID.Value))
+                .Select(songID => songSuggest.activePlayer.scores[songID.Value])
+                .OrderByDescending(score => AccSaberCurve.AP(score.accuracy/100, songSuggest.songLibrary.SongIDToSong((ScoreSaberID)score.songID).complexityAccSaber))
+                .Select(score => (SongID)(ScoreSaberID)score.songID)
                 .ToList();
 
             //Any non found scores (unplayed if added) are found here
@@ -334,40 +334,40 @@ namespace Actions
         }
 
         //Sort the selection by Beat Saber Star Rating
-        private List<String> Star(List<String> selectedSongs)
+        private List<SongID> Star(List<SongID> selectedSongs)
         {
             //Order all selected songs by their star rating.
             var sortedScores = selectedSongs
-                .Select(songID => songSuggest.songLibrary.songs[songID])
+                .Select(songID => songSuggest.songLibrary.songs[songID.UniqueString])
                 .OrderByDescending(song => song.starScoreSaber)
-                .Select(song => song.scoreSaberID)
+                .Select(song => (SongID)(ScoreSaberID)song.scoreSaberID)
                 .ToList();
 
             return sortedScores;
         }
 
         //Sort the selection by AccSaber Complexity
-        private List<String> Complexity(List<String> selectedSongs)
+        private List<SongID> Complexity(List<SongID> selectedSongs)
         {
             //Order all selected songs by their star rating.
             var sortedScores = selectedSongs
-                .Select(songID => songSuggest.songLibrary.songs[songID])
+                .Select(songID => songSuggest.songLibrary.songs[songID.UniqueString])
                 .OrderByDescending(song => song.complexityAccSaber)
-                .Select(song => song.scoreSaberID)
+                .Select(song => (SongID)(ScoreSaberID)song.scoreSaberID)
                 .ToList();
 
             return sortedScores;
         }
 
         //Sort the selection by worldPercentage
-        private List<String> WorldPercentage(List<String> selectedSongs)
+        private List<SongID> WorldPercentage(List<SongID> selectedSongs)
         {
             //Lets find set scores and order them
             var setScores = selectedSongs
-                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID))
-                .Select(songID => songSuggest.activePlayer.scores[songID])
+                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID.Value))
+                .Select(songID => songSuggest.activePlayer.scores[songID.Value])
                 .OrderBy(score => score.rankPercentile)
-                .Select(score => score.songID)
+                .Select(score => (SongID)(ScoreSaberID)score.songID)
                 .ToList();
 
             //Any non found scores (unplayed if added) are found here
@@ -380,14 +380,14 @@ namespace Actions
         }
 
         //Sort the selection by World Rank
-        private List<String> WorldRank(List<String> selectedSongs)
+        private List<SongID> WorldRank(List<SongID> selectedSongs)
         {
             //Lets find set scores and order them
             var setScores = selectedSongs
-                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID))
-                .Select(songID => songSuggest.activePlayer.scores[songID])
+                .Where(songID => songSuggest.activePlayer.scores.ContainsKey(songID.Value))
+                .Select(songID => songSuggest.activePlayer.scores[songID.Value])
                 .OrderBy(score => score.rankScoreSaber)
-                .Select(score => score.songID)
+                .Select(score => (SongID)(ScoreSaberID)score.songID)
                 .ToList();
 
             //Any non found scores (unplayed if added) are found here
@@ -400,7 +400,7 @@ namespace Actions
         }
 
         //Sort the selection Random
-        private List<String> RandomOrder(List<String> selectedSongs)
+        private List<SongID> RandomOrder(List<SongID> selectedSongs)
         {
             Random random = new Random();
 

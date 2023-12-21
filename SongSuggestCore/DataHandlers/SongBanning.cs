@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using SongSuggestNS;
+using SongLibraryNS;
 
 namespace BanLike
 {
@@ -10,7 +11,7 @@ namespace BanLike
         public SongSuggest songSuggest { get; set; }
         public List<SongBan> bannedSongs = new List<SongBan>();
 
-        public List<String> GetBannedIDs()
+        public List<string> GetBannedIDs()
         {
             return bannedSongs.Where(p => p.expire > DateTime.UtcNow).Select(p => p.songID).Distinct().ToList();
         }
@@ -84,12 +85,15 @@ namespace BanLike
         {
             //If a ban is in place, remove it before setting the new ban.
             if (IsBanned(songHash, difficulty)) LiftBan(songHash, difficulty);
+
+            var songID = songSuggest.songLibrary.GetID(songHash, difficulty);
             bannedSongs.Add(new SongBan
             {
                 expire = DateTime.UtcNow.AddDays(days),
                 activated = DateTime.UtcNow,
-                songID = songSuggest.songLibrary.GetID(songHash, difficulty),
-                banType = BanType.SongSuggest
+                songID = songID,
+                banType = BanType.SongSuggest,
+                songName = songSuggest.songLibrary.GetDisplayName(songID)          
             });
             Save();
         }
