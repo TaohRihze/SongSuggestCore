@@ -115,8 +115,7 @@ namespace Actions
                 {
                     if (score.leaderboard.ranked)
                     {
-                        //songLibrary.AddSong(score.leaderboard.id + "", score.leaderboard.songName, score.leaderboard.songHash, score.leaderboard.difficulty.difficulty + "",score.leaderboard.stars);
-                        songLibrary.AddSong((ScoreSaberID)$"{score.leaderboard.id}");
+                        songLibrary.UpsertSong(score.leaderboard);
                         Top10kScore tmpScore = new Top10kScore();
                         tmpScore.songID = score.leaderboard.id + "";
                         tmpScore.pp = score.score.pp;

@@ -16,7 +16,7 @@ namespace SongLibraryNS
             {
                 if (_songID == null)
                 {
-                    _songID = $"{characteristic}-{difficulty}-{hash.ToUpperInvariant()}";
+                    _songID = $"{characteristic}-{difficulty}-{hash}".ToUpperInvariant();
                 }
                 return _songID;
             }

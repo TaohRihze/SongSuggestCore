@@ -219,7 +219,7 @@ namespace WebDownloading
                 //We grab oldest scores first, so updates are performed chronological
                 //https://api.beatleader.xyz/player/76561197993806676/scores/compact?sortBy=date&order=1&page=1&count=100&time_from=1700000000
                 String playerID = songSuggest.activePlayerID;
-                webString = $"https://api.beatleader.xyz/player/{playerID}/scores/compact?sortBy=date&order=1&page={page}&count={count}&time_from={fromUnixTimeStamp}";
+                webString = $"https://api.beatleader.xyz/player/{playerID}/scores/compact?sortBy=pp&order=0&page={page}&count={count}&time_from={fromUnixTimeStamp}";
                 String songInfo = client.DownloadString(webString);
                 return JsonConvert.DeserializeObject<ScoresCompact>(songInfo, serializerSettings);
             }

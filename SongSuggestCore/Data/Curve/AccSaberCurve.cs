@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using SongLibraryNS;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Curve
@@ -91,6 +92,13 @@ namespace Curve
             if (accuracy < 0 || accuracy > 1) return 0.0;
             if (complexityRating == 0) return 0;
             return Multiplier(accuracy) * (complexityRating + 18) * 61;
+        }
+
+        public static double AP(double accuracy, SongID songID)
+        {
+            Song song = SongLibrary.SongIDToSong(songID);
+            if (song == null) return 0;
+            return AP(accuracy, song.complexityAccSaber);
         }
     }
 }

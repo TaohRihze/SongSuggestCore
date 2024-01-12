@@ -4,25 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BeatLeaderJson;
-using System.IO;
+using FileHandling;
 
 namespace SongLibraryNS
 {
-    //Static SongLibrary that uses a specific instance of a library for lookups. This along with the ID system should provide access to the stored Songs objects.
-    public static class SongLibrary
-    {
-        internal static SongLibraryInstance ActiveLibrary { get; set; }
-        [Obsolete("This Will Be Removed")]
-        public static Dictionary<string, Song> Songs => ActiveLibrary?.songs ?? throw new InvalidOperationException("No Library Assigned");
-        public static bool Compare(SongID id1, SongID id2) { return ActiveLibrary.songs[id1.UniqueString] == ActiveLibrary.songs[id2.UniqueString]; }
-        public static string GetID(SongID songID, SongIDType songIDType) { return ActiveLibrary.GetID(songID, songIDType); }
-        public static Song SongIDToSong(SongID songID) { return ActiveLibrary.SongIDToSong(songID); }
-        public static Song StringIDToSong(string songID, SongIDType songIDType) { return ActiveLibrary.StringIDToSong(songID, songIDType); }
-        public static SongID StringIDToSongID(string stringID, SongIDType songIDType) { return ActiveLibrary.StringIDToSongID(stringID, songIDType); }
-        public static List<SongID> StringIDToSongID(List<string> stringIDs, SongIDType songIDType) { return ActiveLibrary.StringIDToSongID(stringIDs, songIDType); }
-        public static bool HasAnySongCategory(SongID songID, SongCategory songCategory) { return ActiveLibrary.HasAnySongCategory(songID, songCategory); }
-    }
-
     //Data on a specific Song Library.
     public class SongLibraryInstance
     {
@@ -38,11 +23,10 @@ namespace SongLibraryNS
         //Returns true if songs has been added/modified since load/last save.
         public bool Updated { get; set; } = false;
 
-        //[Obsolete("Start using Functions to lookup data instead")]
         public Dictionary<String, Song> songs = new Dictionary<String, Song>();
 
         //Sets this library as the active library
-        public void SetActive() { SongLibrary.ActiveLibrary = this; }
+        public void SetActive() { SongLibrary.SetAsActiveLibrary(this); }
 
         //Add a Song Object to the Libary if Unknown, else ignore it. 
         //Use UpsertSong if you want an update on known songs.
@@ -69,18 +53,18 @@ namespace SongLibraryNS
         //Note: BeatLeader provides a song in the SongSuggest format, hence the SongSuggestSong object.
         public void UpsertSong(SongSuggestSong song)
         {
-            //Either find the Song or Create a new object for it with basic information.
-            Song internalSong;
-            if (!songs.TryGetValue(((BeatLeaderID)song.id).UniqueString, out internalSong))
+            //Create new basic song to extract the internal ID from
+            Song internalSong = new Song()
             {
-                //Generate a new song object, so we can get the internalID for match
-                internalSong = new Song()
-                {
-                    hash = song.hash.ToUpperInvariant(),
-                    difficulty = Song.GetDifficultyValue(song.difficulty),
-                    name = song.name
-                };
-            }
+                hash = song.hash.ToUpperInvariant(),
+                difficulty = Song.GetDifficultyValue(song.difficulty),
+                name = song.name
+            };
+
+            //If it is known replace target song with already known song
+            Song foundSong = SongIDToSong((InternalID)internalSong.songID);
+            if (foundSong != null) internalSong = foundSong;
+
 
             //Set or Update remaining generic info
             internalSong.beatLeaderID = song.id;
@@ -195,7 +179,7 @@ namespace SongLibraryNS
                 if (songID is BeatLeaderID) songIDString = song.beatLeaderID;
                 if (songID is ScoreSaberID) songIDString = song.scoreSaberID;
 
-                return $"{song.name} ({song.GetDifficultyText()} - {song.songID})";
+                return $"{song.name} ({song.GetDifficultyText()} - {songIDString})";
             }
             //Song is not in library
             catch
@@ -304,6 +288,7 @@ namespace SongLibraryNS
 
         //Removes songs that are not actively linked to a supported format
         //**Temporary Workaround, also removes songs without a ScoreSaber ID**
+        //**Resets the libraries update time to 0 for Beat Leader as Beat Leader ID's may be removed by this**
         public void RemoveSongsWithoutSongCategories()
         {
             //**ScoreSaberID Null removal for backward Compatibility
@@ -333,6 +318,11 @@ namespace SongLibraryNS
                     songs.Remove(keyPair.Key);
                 }
             }
+
+            //Reset the update time on Beat Leader Songs as they are no longer valid (Leaderboard File is not impacted be so no update there)
+            //**This is a temporary workaround along with the ScoreSaberID Null
+            songSuggest.filesMeta.beatLeaderSongsUpdated = 0;
+            songSuggest.fileHandler.SaveFilesMeta(songSuggest.filesMeta);
         }
 
         //Activate SongType/s
@@ -357,9 +347,6 @@ namespace SongLibraryNS
             }
         }
 
-
-
-
         //Saves an updated library
         public void Save()
         {
@@ -379,15 +366,10 @@ namespace SongLibraryNS
         }
 
         //Returns True/False if hte song is recorded with an active SongCategory
-        public bool HasAnySongCategory(String songID)
-        {
-            return (songs.ContainsKey(songID) && songs[songID].songCategory != 0);
-        }
-
-        //Returns True/False if hte song is recorded with an active SongCategory
         public bool HasAnySongCategory(SongID songID)
         {
             return (songs.ContainsKey(songID.UniqueString) && songs[songID.UniqueString].songCategory != 0);
+
         }
 
 
@@ -411,12 +393,6 @@ namespace SongLibraryNS
             return (songs[songID.UniqueString].songCategory & category) == category;
         }
 
-        //public bool HasAnySongCategory(string songID, SongCategory category)
-        //{
-        //    if (!songs.ContainsKey(songID)) return false;
-        //    return (songs[songID].songCategory & category) > 0;
-        //}
-
         public bool HasAnySongCategory(SongID songID, SongCategory category)
         {
             if (!songs.ContainsKey(songID.UniqueString)) return false;
@@ -427,6 +403,17 @@ namespace SongLibraryNS
         public Song SongIDToSong(SongID songID)
         {
             return songs.TryGetValue(songID.UniqueString, out Song song) ? song : null;
+        }
+
+        //Return a list of songs that is found.
+        public List<Song> SongIDToSong(List<SongID> songIDs)
+        {
+            List<Song> returnSongs = new List<Song>();
+            foreach (var songID in songIDs)
+            {
+                if (songs.TryGetValue(songID.UniqueString, out Song song)) returnSongs.Add(song);
+            }
+            return returnSongs;
         }
 
         //Returns the song or null if not found.
@@ -456,15 +443,10 @@ namespace SongLibraryNS
             var rankedSongIDs = songs.Values
                 .Where(c => (c.songCategory & songCategory) != 0)
                 .Distinct()
-                .Select(c => (SongID)(ScoreSaberID)c.scoreSaberID)
+                .Select(c => (SongID)(InternalID)c.songID)
                 .ToList();
-            return rankedSongIDs;
-        }
 
-        //Return IDs of all known ranked songs from the given list
-        public List<String> GetAllRankedSongIDs(SongCategory songCategory, List<String> songs)
-        {
-            return this.songs.Where(c => (c.Value.songCategory & songCategory) != 0).Select(c => c.Key).Intersect(songs).ToList();
+            return rankedSongIDs;
         }
 
         //Adds the internal ID's to all songs after batch imports
@@ -500,7 +482,7 @@ namespace SongLibraryNS
         //Sets all ID links for a specific Song
         public void SetLibraryLink(Song song)
         {
-            songs[song.songID.ToUpperInvariant()] = song;
+            songs[((InternalID)song.songID).UniqueString] = song;
             if (!string.IsNullOrEmpty(song.scoreSaberID)) songs[((ScoreSaberID)song.scoreSaberID).UniqueString] = song;
             if (!string.IsNullOrEmpty(song.beatLeaderID)) songs[((BeatLeaderID)song.beatLeaderID).UniqueString] = song;
         }
@@ -536,8 +518,6 @@ namespace SongLibraryNS
             }
         }
 
-
-
         //Translate the difficulty name with the assigned value.
         public String GetDifficultyValue(String difficultyText)
         {
@@ -561,80 +541,15 @@ namespace SongLibraryNS
                     return "0";
             }
         }
-    }
 
-    public abstract class SongID
-    {
-        // Abstract property to represent the prefix
-        abstract public string Prefix { get; }
-        public string Value;
-        public string UniqueString => $"{Prefix}{Value}".ToUpperInvariant();
-
-        protected SongID() { }
-
-        public SongID(string value)
+        //Compares 2 SongID's if they are referencing the same object. Returns false if either object is missing.
+        internal bool Compare(SongID id1, SongID id2)
         {
-            Value = value;
+            Song song1;
+            Song song2;   
+            if (!songs.TryGetValue(id1.UniqueString, out song1)) return false;
+            if (!songs.TryGetValue(id2.UniqueString, out song2)) return false;
+            return song1 == song2;
         }
-        public static implicit operator string(SongID id) => id.Value;
-
-        //Allow comparison between songID objects.
-        public override bool Equals(object obj)
-        {
-            // If same object type, just compare directly on value
-            if (obj is SongID songId)
-            {
-                if (this.Prefix == songId.Prefix)
-                {
-                    return this.Value == songId.Value;
-                }
-                return SongLibrary.Compare(this, songId);
-            }
-            return false;
-        }
-        public static bool operator ==(SongID left, SongID right)
-        {
-            return left.Equals(right);
-        }
-        public static bool operator !=(SongID left, SongID right)
-        {
-            return !left.Equals(right);
-        }
-
-        public override int GetHashCode()
-        {
-            // Use the hash code from another object (assuming GetViaSongID returns an object with its own GetHashCode implementation)
-            var relatedObject = SongLibrary.ActiveLibrary.SongIDToSong(this);
-            return relatedObject.GetHashCode();
-        }
-    }
-
-    //ID in the internal format (Generated automatic from a Song object based on Hash, Difficulty, Characteristic)
-    public class InternalID : SongID
-    {
-        public override string Prefix => "ID";                                                              //Unique Prefix for the ID
-        public static implicit operator InternalID(string value) => new InternalID { Value = value };       //Creation from String
-    }
-
-    //BeatLeader SongID
-    public class BeatLeaderID : SongID
-    {
-        public override string Prefix => "BL";
-        public static implicit operator BeatLeaderID(string value) => new BeatLeaderID { Value = value };
-    }
-
-    //ScoreSaber SongID
-    public class ScoreSaberID : SongID
-    {
-        public override string Prefix => "SS";
-        public static implicit operator ScoreSaberID(string value) => new ScoreSaberID { Value = value };
-    }
-
-    //Different songIDs based on active sources
-    public enum SongIDType
-    {
-        Internal,       //Internal ID created by hash, difc, characteristic
-        ScoreSaber,     //ScoreSaberID
-        BeatLeader,     //BeatLeaderID
     }
 }

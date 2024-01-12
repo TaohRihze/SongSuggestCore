@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using SongSuggestNS;
+using SongLibraryNS;
 
 namespace LinkedData
 {
     public class SongEndPoint
     {
-        public String songID { get; set; }
+        public SongID songID { get; set; }
         public List<SongLink> songLinks = new List<SongLink>();
         public float totalRelevanceScore = 0;
         public double totalRank = 0;
@@ -32,14 +33,17 @@ namespace LinkedData
         public double localVSGlobalPP = 0;
 
 
-        public void SetRelevance(int originPoints,int requiredMatches)
+        public void SetRelevance(int originPoints,int requiredMatches, SongIDType songIDType)
         {
             //Get a list of all origin songs
-            List<String> originSongIDs = songLinks.Select(c => c.originSongScore.songID).Distinct().ToList();
+            List<SongID> originSongIDs = songLinks
+                .Select(c => SongLibrary.StringIDToSongID(c.originSongScore.songID,songIDType))
+                .Distinct()
+                .ToList();
             matchedSongs = originSongIDs.Count();
 
             //Get the average of each songs links values and add them to this songs Relevance Score
-            foreach (String songID in originSongIDs)
+            foreach (SongID songID in originSongIDs)
             {
                 totalRelevanceScore += songLinks.Where(c => c.originSongScore.songID == songID).Select(c => c.Strength()).Average();
             //    totalRank += songLinks.Where(c => c.playerSongScore.songID == songID).Select(c => c.suggestedSongScore.rank).Average();
@@ -61,21 +65,27 @@ namespace LinkedData
         }
 
         //Average of the songLinks (per song) distance. Require the Players Origin Song score to set 1,1 coordinates.
-        public void SetDistance (SongSuggest songSuggest)
+        public void SetDistance (SongSuggest songSuggest, SongIDType songIDType)
         {
-            List<String> originSongIDs = songLinks.Select(c => c.originSongScore.songID).Distinct().ToList();
+            List<SongID> originSongIDs = songLinks
+                .Select(c => SongLibrary.StringIDToSongID(c.originSongScore.songID, songIDType))
+                .Distinct()
+                .ToList();
             matchedSongs = originSongIDs.Count();
-            foreach (String songID in originSongIDs)
+            foreach (SongID songID in originSongIDs)
             {
                 totalDistance += songLinks.Where(c => c.originSongScore.songID == songID).Select(c => c.Distance(songSuggest)).Average();
             }
             averageDistance = totalDistance / matchedSongs;
         }
 
-        public void SetStyle(SongEndPointCollection originSongs)
+        public void SetStyle(SongEndPointCollection originSongs, SongIDType songIDType)
         {
-            List<String> originSongIDs = songLinks.Select(c => c.originSongScore.songID).Distinct().ToList();
-            foreach (String originSongID in originSongIDs)
+            List<SongID> originSongIDs = songLinks
+                .Select(c => SongLibrary.StringIDToSongID(c.originSongScore.songID, songIDType))
+                .Distinct()
+                .ToList();
+            foreach (SongID originSongID in originSongIDs)
             {
                 int originSongCount = originSongs.endPoints[originSongID].songLinks.Count();
                 int linkedCount = songLinks.Select(c => c.originSongScore.songID == songID).Count();
@@ -86,11 +96,14 @@ namespace LinkedData
         //Tries and estimate the PP of a song.
         //Current strategy is to sort through all links, find out how many Originsongs have a better score than the players score
         //Then add the next score as the estimate. (In case all scores are better, last link is selected instead).
-        public void SetPP(SongSuggest songSuggest)
+        public void SetPP(SongSuggest songSuggest, SongIDType songIDType)
         {
             int songIndex = 0;
-            List<String> originSongIDs = songLinks.Select(c => c.originSongScore.songID).Distinct().ToList();
-            foreach (String originSongID in originSongIDs)
+            List<SongID> originSongIDs = songLinks
+                .Select(c => SongLibrary.StringIDToSongID(c.originSongScore.songID, songIDType))
+                .Distinct()
+                .ToList();
+            foreach (SongID originSongID in originSongIDs)
             {
                 //Gets the players score on the song being looked at
                 //***NEEDS to consider how to handle a -1 score from "Favorite not played" songs***
@@ -117,12 +130,15 @@ namespace LinkedData
             if (totalSongs < 50) estimatedPP = 0;
         }
 
-        public void SetLocalPP(SongSuggest songSuggest)
+        public void SetLocalPP(SongSuggest songSuggest, SongIDType songIDType)
         {
             //Get linked originSongs
-            List<String> originSongIDs = songLinks.Select(c => c.originSongScore.songID).Distinct().ToList();
+            List<SongID> originSongIDs = songLinks
+                .Select(c => SongLibrary.StringIDToSongID(c.originSongScore.songID, songIDType))
+                .Distinct()
+                .ToList();
             //Count the averages for each song (so we end up with weighted averages).
-            foreach (String originSongID in originSongIDs)
+            foreach (SongID originSongID in originSongIDs)
             {
                 localPPAverage += songLinks.Where(c => c.originSongScore.songID == originSongID).Average(c => c.targetSongScore.pp);
             }

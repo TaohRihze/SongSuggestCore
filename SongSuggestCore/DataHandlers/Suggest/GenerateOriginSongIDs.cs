@@ -1,4 +1,6 @@
-﻿using System;
+﻿using SongLibraryNS;
+using SongSuggestNS;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,16 +8,28 @@ namespace Actions
 {
     public static class GenerateOriginSongIDs
     {
-        internal static void Execute(RankedSongSuggest.DTO dto, out List<string> originSongIDs)
+        internal static void Execute(RankedSongSuggest.DTO dto, out List<SongID> originSongIDs)
         {
-            originSongIDs = new List<string>();
+            originSongIDs = new List<SongID>();
             //Add Liked songs.
             dto.log?.WriteLine($"Use Liked Songs: {dto.useLikedSongs}");
 
-            if (dto.useLikedSongs) originSongIDs.AddRange(dto.suggestSM.LikedSongs().Select(c => c.Value).ToList());
-            int targetCount = originSongIDs.Count();
+            if (dto.useLikedSongs) originSongIDs.AddRange(dto.suggestSM.LikedSongs());
 
+
+
+            int targetCount = originSongIDs.Count();
             dto.log?.WriteLine($"Liked Songs in list: {originSongIDs.Count()}");
+
+            //Debug code for showing actual selected liked songs.
+            dto.log?.WriteLine("Selected Liked Songs");
+            foreach (var songID in originSongIDs)
+            {
+                var song = SongLibrary.SongIDToSong(songID);
+                var songCategory = song.songCategory & dto.suggestSM.LeaderboardSongCategory();
+                var songName = SongLibrary.GetDisplayName(songID);
+                dto.log?.WriteLine($"SongCategory: {songCategory,-16}   Score: {dto.suggestSM.PlayerScoreValue(songID),8:N2}    {songName}");
+            }
 
             //Add the standard origin songs if either normal mode of filler is activated
             if (!dto.useLikedSongs || dto.fillLikedSongs)
@@ -31,7 +45,7 @@ namespace Actions
 
                 dto.log?.WriteLine("Liked + Played Songs in list: " + originSongIDs.Count());
 
-                //If there is no originSongs found (no played in the group, or all permabanned) we some default songs to give suggestions from.
+                //If there is no originSongs found (no played in the group, or all permabanned) we select some default songs to give suggestions from.
                 if (originSongIDs.Count == 0)
                 {
                     //Too few source songs, so we set a warning, and get the filler songs (which activates the Limit Breaker).
@@ -52,7 +66,21 @@ namespace Actions
                 originSongIDs = originSongIDs
                     .Take(targetCount)  //Try and get originSongsCount or all liked whichever is larger
                     .ToList();
+            }
+
+            //Only show extra output if liked Songs are active, else it is the same list.
+            if (dto.useLikedSongs)
+            {
                 dto.log?.WriteLine("Final Songs in list: " + originSongIDs.Count());
+                //Debug code for showing actual selected liked songs.
+                dto.log?.WriteLine("Selected Liked Songs");
+                foreach (var songID in originSongIDs)
+                {
+                    var song = SongLibrary.SongIDToSong(songID);
+                    var songCategory = song.songCategory & dto.suggestSM.LeaderboardSongCategory();
+                    var songName = SongLibrary.GetDisplayName(songID);
+                    dto.log?.WriteLine($"SongCategory: {songCategory,-16}   Score: {dto.suggestSM.PlayerScoreValue(songID),8:N2}    {songName}");
+                }
             }
         }
     }

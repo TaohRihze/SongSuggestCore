@@ -18,7 +18,7 @@ namespace PlaylistNS
         public String syncURL { get; set; } = null;
 
         //List of songID's on added songs
-        public List<SongID> songs = new List<SongID>();
+        public List<SongID> songIDs = new List<SongID>();
 
         public PlaylistManager(PlaylistSettings playlistSettings)
         {
@@ -62,7 +62,7 @@ namespace PlaylistNS
             image = playlistJSON.image;
             description = playlistJSON.playlistDescription;
             syncURL = playlistJSON.syncURL;
-            songs.Clear();
+            songIDs.Clear();
 
             foreach (var song in playlistJSON.songs)
             {
@@ -70,7 +70,7 @@ namespace PlaylistNS
                 {
                     if (difficulty.characteristic == "Standard")
                     {
-                        songs.Add(songSuggest.songLibrary.GetID(song.hash, difficulty.name));
+                        songIDs.Add(songSuggest.songLibrary.GetID(song.hash, difficulty.name));
                     }
                 }
             }
@@ -88,19 +88,16 @@ namespace PlaylistNS
             playlist.syncURL = syncURL;
 
             playlist.songs = new List<SongJson>();
-            foreach (var song in songs)
+            foreach (var songID in songIDs)
             {
-                //**TEMPORARY WORKAROUND**
-                ScoreSaberID songID = (ScoreSaberID)song;
-
                 SongJson songJSON = new SongJson();
 
-                songJSON.hash = songSuggest.songLibrary.GetHash(song);
+                songJSON.hash = songSuggest.songLibrary.GetHash(songID);
 
                 Difficulty difficultyJSON = new Difficulty();
                 //difficultyJSON.characteristic = "Standard";
-                difficultyJSON.characteristic = songSuggest.songLibrary.songs[songID.UniqueString].characteristic;
-                difficultyJSON.name =songSuggest.songLibrary.GetDifficultyName(song);
+                difficultyJSON.characteristic = SongLibrary.SongIDToSong(songID).characteristic;
+                difficultyJSON.name =songSuggest.songLibrary.GetDifficultyName(songID);
 
                 songJSON.difficulties = new List<Difficulty>();
                 songJSON.difficulties.Add(difficultyJSON);
@@ -116,18 +113,18 @@ namespace PlaylistNS
         //Add a song to the playlist
         public void AddSong(SongID songID)
         {
-            songs.Add(songID);
+            songIDs.Add(songID);
         }
 
         public void AddSongs(List<SongID> songID)
         {
-            songs.AddRange(songID);
+            songIDs.AddRange(songID);
         }
 
         //Remove a song from the playlist
         public void RemoveSong(SongID songID)
         {
-            songs.Remove(songID);
+            songIDs.Remove(songID);
         }
 
         //private String GetSongString(String songID)
@@ -147,7 +144,7 @@ namespace PlaylistNS
 
         public List<SongID> GetSongs()
         {
-            return songs;
+            return songIDs;
         }
     }
 

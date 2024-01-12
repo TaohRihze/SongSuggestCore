@@ -36,6 +36,11 @@ namespace Actions
             throw new InvalidOperationException($"Unknown PlayerScoreIDs Source found: {scoreLocation}");
         }
 
+        public double PlayerScoreValue(string stringID)
+        {
+            return PlayerScoreValue(SongLibrary.StringIDToSongID(stringID,LeaderboardSongIDType()));
+        }
+
         //Returns the value of a songID .. if song is unknown 0 is returned.
         public double PlayerScoreValue(SongID songID)
         {
@@ -52,6 +57,7 @@ namespace Actions
                         if (!songSuggest.activePlayer.scores.ContainsKey(song.scoreSaberID)) return 0;
                         return songSuggest.activePlayer.scores[song.scoreSaberID].pp;
                     case LeaderboardType.BeatLeader:
+                        if (song == null) return 0;  //**TEMPORARY TEST DELETE IN FUTURE
                         var playerScore = songSuggest.beatLeaderScores.playerScores.Find(c => c.SongID == song.beatLeaderID);
                         return (playerScore != null) ? playerScore.PP:0;
                 }
@@ -109,9 +115,14 @@ namespace Actions
         public List<SongID> LikedSongs()
         {
             var allLikedSongs = songSuggest.songLiking.GetLikedIDs();
-            var allSourceSongs = songSuggest.songLibrary.GetAllRankedSongIDs(LeaderboardSongCategory()).Select(c => c.Value).ToList();
+            var allLikedSongIDs = SongLibrary.StringIDToSongID(allLikedSongs, SongIDType.ScoreSaber);
+            //reduce the liked songs to the ones relevant to active leaderboard.
+            allLikedSongIDs = allLikedSongIDs.Where(c => SongLibrary.HasAnySongCategory(c, LeaderboardSongCategory())).ToList();
 
-            return SongLibrary.StringIDToSongID(allLikedSongs.Intersect(allSourceSongs).ToList(),SongIDType.ScoreSaber); //**Needs rewrite to store SongLibrary in Internal ID format and return those direct.
+            //var allSourceSongs = songSuggest.songLibrary.GetAllRankedSongIDs(LeaderboardSongCategory()).Select(c => c.Value).ToList();
+
+            return allLikedSongIDs;
+                //SongLibrary.StringIDToSongID(allLikedSongs.Intersect(allSourceSongs).ToList(),SongIDType.ScoreSaber); //**Needs rewrite to store SongLibrary in Internal ID format and return those direct.
         }
 
         //Returns the calculated value of a songID .. unknown songs got 0 accuracy so 0 is returned.
@@ -161,6 +172,21 @@ namespace Actions
                     return SongCategory.BeatLeader;
             }
             throw new InvalidOperationException($"Unknown LeaderboardSongCategory Source found: {leaderboardType}");
+        }
+
+        //Returns the enum for the Leaderboards SongIDType.
+        public SongIDType LeaderboardSongIDType()
+        {
+            switch (leaderboardType)
+            {
+                case LeaderboardType.ScoreSaber:
+                    return SongIDType.ScoreSaber;
+                case LeaderboardType.AccSaber:
+                    return SongIDType.ScoreSaber;
+                case LeaderboardType.BeatLeader:
+                    return SongIDType.BeatLeader;
+            }
+            throw new InvalidOperationException($"Unknown LeaderboardSongIDType Source found: {leaderboardType}");
         }
     }
 }

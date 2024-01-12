@@ -52,11 +52,11 @@ namespace Actions
             foreach (var item in links)
             {
                 //Add the songlink to the origin list
-                string originSongID = item.link.originSongScore.songID;
+                SongID originSongID = SongLibrary.StringIDToSongID(item.link.originSongScore.songID,data.suggestSM.LeaderboardSongIDType());
                 originSongs.endPoints[originSongID].songLinks.Add(item.link);
 
                 //Create the target endpoint if needed.
-                string targetSongID = item.link.targetSongScore.songID;
+                SongID targetSongID = SongLibrary.StringIDToSongID(item.link.targetSongScore.songID, data.suggestSM.LeaderboardSongIDType());
                 if (!targetSongs.endPoints.ContainsKey(targetSongID))
                 {
                     targetSongs.endPoints.Add(targetSongID, new SongEndPoint { songID = targetSongID });
@@ -85,7 +85,8 @@ namespace Actions
         //Removes songs that are to be ignored, as well as songs linking itself.
         private static bool ValidateTargetSong(RankedSongSuggest.DTO data, Top10kScore originSong, Top10kScore suggestedSong)
         {
-            return suggestedSong.rank != originSong.rank && !data.ignoreSongs.Contains(suggestedSong.songID);
+            SongID suggestedSongID = SongLibrary.StringIDToSongID(suggestedSong.songID, data.suggestSM.LeaderboardSongIDType());
+            return suggestedSong.rank != originSong.rank && !data.ignoreSongs.Contains(suggestedSongID);
         }
 
         //Generate the Song Link, as well as set the aproximate completion, as majority of loop should be in this part
@@ -105,11 +106,12 @@ namespace Actions
 
         private static bool ValidateOriginSong(RankedSongSuggest.DTO data, Top10kScore originSongCandidate)
         {
+            var originSongCandidateID = SongLibrary.StringIDToSongID(originSongCandidate.songID, data.suggestSM.LeaderboardSongIDType());
             //Return false if song is not in the list of songs we are looking for.
-            if (!data.originSongIDs.Contains(originSongCandidate.songID)) return false;
+            if (!data.originSongIDs.Contains(originSongCandidateID)) return false;
 
             //Score validation check, we need to fail only if the song is not unplayed (0 value), and is outside the given limits. Single lining this is prone to errors.
-            double playerSongValue = data.suggestSM.PlayerScoreValue((ScoreSaberID)originSongCandidate.songID); //**Needs to handle SongID's in the future, for now ScoreSaber only
+            double playerSongValue = data.suggestSM.PlayerScoreValue(originSongCandidate.songID);
             bool validatedScore = false;
             if (playerSongValue == 0) validatedScore = true;
             if (originSongCandidate.pp < playerSongValue * data.betterAccCap && originSongCandidate.pp > playerSongValue * data.worseAccCap) validatedScore = true;

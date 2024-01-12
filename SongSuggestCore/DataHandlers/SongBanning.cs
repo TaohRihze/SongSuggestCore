@@ -16,6 +16,15 @@ namespace BanLike
             return bannedSongs.Where(p => p.expire > DateTime.UtcNow).Select(p => p.songID).Distinct().ToList();
         }
 
+        public List<SongID> GetBannedSongIDs()
+        {
+            return bannedSongs
+                .Where(p => p.expire > DateTime.UtcNow)
+                .Select(p => (SongID)(ScoreSaberID)p.songID)
+                .Distinct()
+                .ToList();
+        }
+
         public List<String> GetBannedIDs(BanType banType)
         {
             return bannedSongs

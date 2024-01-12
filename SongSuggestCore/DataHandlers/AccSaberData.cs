@@ -144,17 +144,17 @@ namespace AccSaberData
             currentSong = 0;
 
             //Loop songs and update if needed.
-            foreach (var song in songsMissingData)
+            foreach (var songData in songsMissingData)
             {
-                string songID = song.SongID;
-                string name = songSuggest.songLibrary.songs[songID].name;
+                Song song = songSuggest.songLibrary.StringIDToSong(songData.SongID,SongIDType.ScoreSaber);
+                string songID = song.scoreSaberID;
 
-                songSuggest.log?.WriteLine($"Starting Song: {songID} - {name}.");
+                songSuggest.log?.WriteLine($"Starting Song: {songID} - {song.name}.");
                 //reset the Complexity
-                song.Complexity = songSuggest.songLibrary.songs[song.SongID].complexityAccSaber;
+                songData.Complexity = song.complexityAccSaber;
 
                 //Perform refresh on songs that are obsolette or has 0 scores assigned (new).
-                if (song.PlayerScores.Count == 0 || song.Updated < obsoletePoint)
+                if (songData.PlayerScores.Count == 0 || songData.Updated < obsoletePoint)
                 {
                     //Get Song meta from web
                     LeaderboardInfo songMeta = songSuggest.webDownloader.GetLeaderboardInfo(songID);
@@ -177,7 +177,7 @@ namespace AccSaberData
                         foreach (var score in scorePage.scores)
                         {
                             //Break if acc < 95%
-                            if (score.modifiedScore < targetAcc * song.MaxScore)
+                            if (score.modifiedScore < targetAcc * songData.MaxScore)
                             {
                                 lowScoreFound = true;
                                 break;
@@ -187,18 +187,18 @@ namespace AccSaberData
                             {
                                 PlayerID = score.leaderboardPlayerInfo.id,
                                 Points = score.modifiedScore,
-                                Song = song,
+                                Song = songData,
                             };
 
                             //Add it to the data
-                            song.PlayerScores.Add(tmpScore);
+                            songData.PlayerScores.Add(tmpScore);
                             if (page % 10 == 9) lastAcc = tmpScore.Accuracy * 100;
                         }
                         page++;
                     }
 
                     //Song Update was completed
-                    song.Updated = DateTime.UtcNow;
+                    songData.Updated = DateTime.UtcNow;
                     songsMissingDataCount--;
                     TimeSpan timeUntilNextSave = lastSave.AddMinutes(minuteSaveInterval) - DateTime.UtcNow;
                     string saveTimePrefix = timeUntilNextSave < TimeSpan.Zero ? "-" : "";
