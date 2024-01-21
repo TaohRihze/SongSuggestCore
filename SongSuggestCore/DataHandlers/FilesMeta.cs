@@ -10,6 +10,7 @@ namespace Data
         public DateTime top10kUpdated { get; set; }
         public long beatLeaderLeaderboardUpdated { get; set; } = 0;
         public long beatLeaderSongsUpdated { get; set; } = 0;
+        public long beatLeaderPlayerScoresDate { get; set; } = 0;
 
 
         //Deprecated, use the String version and later rework old checks to new when playerData is updated.

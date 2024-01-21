@@ -223,7 +223,7 @@ namespace SongSuggestNS
         public void GenerateSongSuggestions(SongSuggestSettings settings)
         {
             //Refresh Player Data (Skip if test user ID -100)
-            activePlayerID = settings.ScoreSaberID;
+            activePlayerID = settings.PlayerID;
             if (activePlayerID != "-100") RefreshActivePlayer();
 
             //Create the Song Suggestion (so once the creation has been made additional information can be kept and loaded from it.
@@ -299,6 +299,8 @@ namespace SongSuggestNS
         {
             ActivePlayerRefreshData activePlayerRefreshData = new ActivePlayerRefreshData { songSuggest = this };
             activePlayerRefreshData.RefreshActivePlayer();
+
+            if (_coreSettings.UseBeatLeaderLeaderboard) beatLeaderScores.Refresh();
         }
 
         //Get the placement of a specific song in last RankedSongSuggest, "" if not given a rank.

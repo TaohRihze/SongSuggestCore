@@ -29,6 +29,16 @@ namespace PlayerScores
 
         public void Refresh()
         {
+            //Reset cached scores if there has been an update to ranked songs
+            var meta = songSuggest.filesMeta;
+            if (meta.beatLeaderPlayerScoresDate < meta.beatLeaderLeaderboardUpdated)
+            {
+                playerScores.Clear();
+                Save();
+                meta.beatLeaderPlayerScoresDate = meta.beatLeaderLeaderboardUpdated;
+                songSuggest.fileHandler.SaveFilesMeta(meta);
+            }
+
             //If there are no stored scores, we set timestamp to 0, meaning we will get all, else we grab newest recorded score and grab scores after.
             long lastUpdateAsUnixTimestamp = (playerScores.Count() > 0) ? ((DateTimeOffset)playerScores.OrderByDescending(c => c.TimeSet).First().TimeSet).ToUnixTimeSeconds():0;
             int scoresPerPage = 100;

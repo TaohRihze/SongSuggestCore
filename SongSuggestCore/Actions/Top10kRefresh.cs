@@ -195,7 +195,7 @@ namespace Actions
             }
 
             //Update on progress
-            if ((playerCount + skippedPlayers) % 100 == 0) songSuggest.log?.WriteLine("Found Users: {0} Skipped Users: {1} ({2} low efficiency / {3} low play / {4} inactive) Total: {5}", playerCount, skippedPlayers, lowEfficiencyPlayers, lowPlayCount, inactivePlayers, playerCount+skippedPlayers);
+            songSuggest.log?.WriteLine("Found Users: {0} Skipped Users: {1} ({2} low efficiency / {3} low play / {4} inactive) Total: {5}", playerCount, skippedPlayers, lowEfficiencyPlayers, lowPlayCount, inactivePlayers, playerCount+skippedPlayers);
 
             if (songLibrary.Updated) songLibrary.Save();
             UpdateFilesMeta(largeUpdate);

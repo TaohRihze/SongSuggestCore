@@ -122,7 +122,8 @@ namespace Actions
             suggestSM = new SuggestSourceManager()
             {
                 songSuggest = this.songSuggest,
-                scoreLocation = useLocalScores ? ScoreLocation.LocalScores : scoreLocation,
+                //For now local scores require it is ScoreSaber data
+                scoreLocation = (useLocalScores && scoreLocation == ScoreLocation.ScoreSaber) ? ScoreLocation.LocalScores : scoreLocation,
                 leaderboardType = leaderboard
             };
 
