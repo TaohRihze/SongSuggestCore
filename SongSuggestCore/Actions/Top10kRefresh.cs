@@ -49,10 +49,8 @@ namespace Actions
         {
             double maxSpread = 0.7; //closer to 1 the lower the spread
 
-            //FileHandler fileHandler = songSuggest.fileHandler;
             WebDownloader webDownloader = songSuggest.webDownloader;
             SongLibraryInstance songLibrary = songSuggest.songLibrary;
-            //Throttler throttler = webDownloader.ssThrottler;
             
             top10kPlayers = new Top10kPlayers() { songSuggest = songSuggest };
 
@@ -95,13 +93,13 @@ namespace Actions
                 };
 
                 //Lets grab the top 30 scores of that player and get them added
-                PlayerScoreCollection playerScoreCollection = webDownloader.GetScores(currentPlayer.id, "top", 30, 1);
+                PlayerScoreCollection playerScoreCollection = webDownloader.GetScoreSaberPlayerScores(currentPlayer.id, "top", 30, 1);
 
                 //***These failed a few times, lets try this again, and if it fails once more, log this failure***
                 if (playerScoreCollection.playerScores == null)
                 {
                     songSuggest.log?.WriteLine($"Player ID: {currentPlayer.id} failed to download. Page: {candidatePage}");
-                    playerScoreCollection = webDownloader.GetScores(currentPlayer.id, "top", 30, 1);
+                    playerScoreCollection = webDownloader.GetScoreSaberPlayerScores(currentPlayer.id, "top", 30, 1);
                     if (playerScoreCollection.playerScores == null) songSuggest.log?.WriteLine("Failed Again!");
                     continue;
                 }

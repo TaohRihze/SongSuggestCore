@@ -7,11 +7,15 @@
         public string Value;
         public string UniqueString => $"{Prefix}{Value}".ToUpperInvariant();
 
+        protected Song _cachedSong;
+
         protected SongID() { }
 
         public Song GetSong()
         {
-            return SongLibrary.SongIDToSong(this);
+            //Return cached song. If no song is cached attempt to retrieve it from the library, store value and return found value (can still be null if unknown in Library).
+            return _cachedSong ?? (_cachedSong = SongLibrary.SongIDToSong(this));
+            //return SongLibrary.SongIDToSong(this);
         }
 
         public SongID(string value)
@@ -24,13 +28,15 @@
         public override bool Equals(object obj)
         {
             // If same object type, just compare directly on value
-            if (obj is SongID songId)
+            if (obj is SongID songID)
             {
-                if (this.Prefix == songId.Prefix)
+                if (this.Prefix == songID.Prefix)
                 {
-                    return this.UniqueString == songId.UniqueString;
+                    return this.UniqueString == songID.UniqueString;
                 }
-                return SongLibrary.Compare(this, songId);
+                return GetSong() == songID.GetSong();
+                
+                //return SongLibrary.Compare(this, songId);
             }
             return false;
         }
@@ -46,7 +52,7 @@
         public override int GetHashCode()
         {
             // Use the hash code from another object (assuming GetViaSongID returns an object with its own GetHashCode implementation)
-            var relatedObject = SongLibrary.SongIDToSong(this);
+            var relatedObject = GetSong();
             if (relatedObject == null)
             {
                 //Possible add this to log in the future, via Static SongSuggest log.
@@ -61,20 +67,23 @@
     public class InternalID : SongID
     {
         public override string Prefix => "ID";                                                              //Unique Prefix for the ID
-        public static implicit operator InternalID(string value) => new InternalID { Value = value };       //Creation from String
+        //public static implicit operator InternalID(string value) => new InternalID { Value = value };       //Creation from String
+        public static implicit operator InternalID(string value) => (InternalID)SongLibrary.StringIDToSongID(value, SongIDType.Internal);       //Creation from String
     }
 
     //BeatLeader SongID
     public class BeatLeaderID : SongID
     {
         public override string Prefix => "BL";
-        public static implicit operator BeatLeaderID(string value) => new BeatLeaderID { Value = value };
+        //public static implicit operator BeatLeaderID(string value) => new BeatLeaderID { Value = value };
+        public static implicit operator BeatLeaderID(string value) => (BeatLeaderID)SongLibrary.StringIDToSongID(value, SongIDType.BeatLeader);       //Creation from String
     }
 
     //ScoreSaber SongID
     public class ScoreSaberID : SongID
     {
         public override string Prefix => "SS";
-        public static implicit operator ScoreSaberID(string value) => new ScoreSaberID { Value = value };
+        //public static implicit operator ScoreSaberID(string value) => new ScoreSaberID { Value = value };
+        public static implicit operator ScoreSaberID(string value) => (ScoreSaberID)SongLibrary.StringIDToSongID(value, SongIDType.ScoreSaber);       //Creation from String
     }
 }

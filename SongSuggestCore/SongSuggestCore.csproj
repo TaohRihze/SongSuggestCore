@@ -5,6 +5,19 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Data\Player Data\BeatLeader\**" />
+    <Compile Remove="Data\Player Data\LocalScores\**" />
+    <Compile Remove="Data\Player Data\ScoreSaber\**" />
+    <EmbeddedResource Remove="Data\Player Data\BeatLeader\**" />
+    <EmbeddedResource Remove="Data\Player Data\LocalScores\**" />
+    <EmbeddedResource Remove="Data\Player Data\ScoreSaber\**" />
+    <None Remove="Data\Player Data\BeatLeader\**" />
+    <None Remove="Data\Player Data\LocalScores\**" />
+    <None Remove="Data\Player Data\ScoreSaber\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Actions\ActivePlayerRefreshData.cs" />
     <Compile Remove="Data\Settings\OldestSongSettings.cs" />
   </ItemGroup>
 

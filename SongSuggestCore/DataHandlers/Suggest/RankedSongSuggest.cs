@@ -8,6 +8,7 @@ using Settings;
 using SongSuggestNS;
 using BanLike;
 using SongLibraryNS;
+using System.Runtime.InteropServices;
 
 namespace Actions
 {
@@ -101,6 +102,18 @@ namespace Actions
             dto = new DTO(this);
         }
 
+        string TimeTaken = "";
+        long segment = 0;
+        long previousTotal = 0;
+        long total = 0;
+
+        private void UpdateTimeTaken(string sectionName)
+        {
+            previousTotal = total;
+            total = timer.ElapsedMilliseconds;
+            segment = total - previousTotal;
+            TimeTaken = ($"{TimeTaken}{Environment.NewLine}{sectionName,-40} Total: {total,4}ms  Segment: {segment,4}ms  Requests: {songSuggest.songLibrary.GetSongIDRequests()}");
+        }
 
         //Creates a playlist with playlist count suggested songs based on the link system.
         public void SuggestedSongs()
@@ -132,23 +145,35 @@ namespace Actions
             //Sets the lower quality suggestions to false, different parts of the song evaluations can turn it true.
             songSuggest.lowQualitySuggestions = false;
 
+            songSuggest.log?.WriteLine("Starts the timer");
+            timer.Start();
+
+            TimeTaken = "";
+            UpdateTimeTaken("Start:");
+
             //Setup Base Linking (song links).
             CreateLinks();
+            UpdateTimeTaken("After: CreateLinks()");
 
             //Generate the different filters rankings. (Calculate Scores, and Rank them)
             CreateFilterRanks();
+            UpdateTimeTaken("After: CreateFilterRanks()");
 
             //Takes the orderes lists runs through them and assign points based on order.
             EvaluateFilters();
+            UpdateTimeTaken("After: EvaluateFilters()");
 
             //Removes filtered songs (Played/Played within X days/Banned/Not expected improveable atm) depending on settings
             RemoveIgnoredSongs();
+            UpdateTimeTaken("After: RemoveIgnoredSongs()");
 
             //Performs special selection filtering for Leaderboards
             LeaderboardSpecialFiltering();
+            UpdateTimeTaken("After: LeaderboardSpecialFiltering()");
 
             //Creates the playist of remaining songs
             CreatePlaylist();
+            UpdateTimeTaken("After: CreatePlaylist()");
 
             //----- Console Writeline for Debug -----
             songSuggest.log?.WriteLine($"Players Linked: {linkedPlayers}");
@@ -157,29 +182,27 @@ namespace Actions
             songSuggest.log?.WriteLine($"Playlist Generation Done: {timer.ElapsedMilliseconds}ms");
 
             timer.Stop();
+            timer.Reset();
             songSuggest.log?.WriteLine($"Time Spent: {timer.ElapsedMilliseconds}ms");
+            songSuggest.log?.WriteLine(TimeTaken);
         }
 
-        public void Recalculate()
-        {
-            timer.Reset();
-            timer.Start();
-            songSuggest.log?.WriteLine("Starting Recalculations");
-            EvaluateFilters();
-            RemoveIgnoredSongs();
-            CreatePlaylist();
-            songSuggest.log?.WriteLine($"Recalculations Done: {timer.ElapsedMilliseconds}ms");
-        }
+        //public void Recalculate()
+        //{
+        //    timer.Reset();
+        //    timer.Start();
+        //    songSuggest.log?.WriteLine("Starting Recalculations");
+        //    EvaluateFilters();
+        //    RemoveIgnoredSongs();
+        //    CreatePlaylist();
+        //    songSuggest.log?.WriteLine($"Recalculations Done: {timer.ElapsedMilliseconds}ms");
+        //}
 
         //Creates the needed linked data for song evaluation for the Active Player.
         //Until Active Players top originSongsCount scores change *1 (replaced or better scores) no need to recalculate
         //*1 (Liked songs if active changes also counts as an update)
         public void CreateLinks()
         {
-            //Updating scores has external wait time of the API call, so restarting measurement for the remainder of the update.
-            songSuggest.log?.WriteLine("Starts the timer");
-            timer.Start();
-
             //Get Link Data
             songSuggest.status = "Finding Link Data";
             songSuggest.log?.WriteLine($"Done loading and generating the top10k player data: {timer.ElapsedMilliseconds}ms");
@@ -190,7 +213,7 @@ namespace Actions
             songSuggest.log?.WriteLine("Completion: " + (songSuggestCompletion * 100) + "%");
 
             //Link the origin songs with the songs on the LeaderBoard as a basis for suggestions.
-            ignoreSongs = SongLibrary.StringIDToSongID(songSuggest.songBanning.GetPermaBannedIDs(),SongIDType.ScoreSaber);
+            ignoreSongs = SongLibrary.StringIDToSongID(songSuggest.songBanning.GetPermaBannedIDs(), SongIDType.ScoreSaber);
             GenerateLinks.Execute(dto, out originSongs, out targetSongs, out linkedSongs);
             linkedPlayers = linkedSongs / 19; //Workaround for now there is always 19 linked songs per player, this may change.
             songSuggest.log?.WriteLine("Completion: " + (songSuggestCompletion * 100) + "%");
@@ -201,7 +224,7 @@ namespace Actions
             {
                 songSuggest.lowQualitySuggestions = true;
                 songSuggest.log?.WriteLine("Not Enough Player Links Found ({0}) with Acc Limit on. Activate Limit Breaker.", linkedPlayers);
-                betterAccCap = Double.MaxValue;
+                betterAccCap = double.MaxValue;
                 worseAccCap = 0;
                 GenerateLinks.Execute(dto, out originSongs, out targetSongs, out linkedSongs);
                 songSuggest.log?.WriteLine("Completion: " + (songSuggestCompletion * 100) + "%");
@@ -213,7 +236,7 @@ namespace Actions
         //At the same time we remove limits on all songs
         public List<SongID> GetFillerSongs()
         {
-            betterAccCap = Double.MaxValue;
+            betterAccCap = double.MaxValue;
             worseAccCap = 0;
             songSuggest.lowQualitySuggestions = true;
 
@@ -383,7 +406,6 @@ namespace Actions
 
             //Get count of candidates, and remove 1, as index start as 0, so max value is songs-1
             double totalCandidates = distanceFilterOrdered.Count() - 1;
-
             //As all 3 filters contain same ID's we can loop the song IDs from either of the filters, and calculate their combined score.
             foreach (SongID distanceCandidate in distanceFilterOrdered)
             {
@@ -415,7 +437,6 @@ namespace Actions
                 //Add song ID and its score to a list for sorting and reducing size for the playlist generation
                 totalScore.Add(distanceCandidate, score);
             }
-
             //Sort list, and get song ID's only
             sortedSuggestions = totalScore.OrderBy(s => s.Value).Select(s => s.Key).ToList();
 
@@ -464,7 +485,7 @@ namespace Actions
                     .Where(c => c.Value.count >= 3)
                     .OrderBy(c => c.Value.maxScore)
                     .Select(c => c.Value.songID)
-                    .Select(c => SongLibrary.StringIDToSongID(c,suggestSM.LeaderboardSongIDType()))
+                    .Select(c => SongLibrary.StringIDToSongID(c, suggestSM.LeaderboardSongIDType()))
                     .Except(sortedSuggestions)
                     .ToList();
 
@@ -526,6 +547,9 @@ namespace Actions
             {
                 ignoreSongs.AddRange(LeaderboardNonImproveableFiltering());
             }
+
+            //**Remove all acc broken songs for now
+            ignoreSongs.AddRange(SongLibrary.GetAllRankedSongIDs(SongCategory.BrokenDownloads));
 
             return ignoreSongs;
         }
@@ -606,7 +630,7 @@ namespace Actions
         {
             if (suggestSM.leaderboardType == LeaderboardType.AccSaber)
             {
- //               filteredSuggestions = filteredSuggestions.Where(c => (songSuggest.songLibrary.songs[c].songCategory & accSaberPlaylistCategories) > 0).ToList();
+                //               filteredSuggestions = filteredSuggestions.Where(c => (songSuggest.songLibrary.songs[c].songCategory & accSaberPlaylistCategories) > 0).ToList();
 
                 filteredSuggestions = filteredSuggestions
                     .Where(c => SongLibrary.HasAnySongCategory(c, accSaberPlaylistCategories))
@@ -625,6 +649,22 @@ namespace Actions
             PlaylistManager playlist = new PlaylistManager(settings.PlaylistSettings) { songSuggest = songSuggest };
             playlist.AddSongs(songSuggestIDs);
             playlist.Generate();
+        }
+
+        internal void ShowCache()
+        {
+            songSuggest.log?.WriteLine($"Cache Counts");
+            songSuggest.log?.WriteLine($"sortedSuggestions : {sortedSuggestions.Count()}");
+            songSuggest.log?.WriteLine($"filteredSuggestions : {filteredSuggestions.Count()}");
+            songSuggest.log?.WriteLine($"songSuggestIDs : {songSuggestIDs.Count()}");
+            songSuggest.log?.WriteLine($"originSongIDs : {originSongIDs.Count()}");
+            songSuggest.log?.WriteLine($"ignoreSongs : {ignoreSongs.Count()}");
+            songSuggest.log?.WriteLine($"originSongs : {originSongs.endPoints.Count()}");
+            double originSum = originSongs.endPoints.Sum(c => c.Value.songLinks.Count());
+            songSuggest.log?.WriteLine($"originSongs entries : {originSum}");
+            songSuggest.log?.WriteLine($"targetSongs : {targetSongs.endPoints.Count()}");
+            double targetSum = targetSongs.endPoints.Sum(c => c.Value.songLinks.Count());
+            songSuggest.log?.WriteLine($"originSongs entries : {targetSum}");
         }
     }
 

@@ -8,17 +8,18 @@ namespace SongLibraryNS
 {
     public class Song 
     {
-        private string _songID;
+        private string _cachedInternalID;
         [JsonIgnore]
-        public string songID
+        public string internalID //Internal ID
         { 
             get
             {
-                if (_songID == null)
+                if (_cachedInternalID == null)
                 {
-                    _songID = $"{characteristic}-{difficulty}-{hash}".ToUpperInvariant();
+                    _cachedInternalID = $"{characteristic}-{difficulty}-{hash}".ToUpperInvariant();
                 }
-                return _songID;
+
+                return _cachedInternalID;
             }
         }
         public string scoreSaberID { get; set; }

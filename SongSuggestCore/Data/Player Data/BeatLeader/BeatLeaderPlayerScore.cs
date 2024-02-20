@@ -2,6 +2,7 @@
 
 namespace PlayerScores
 {
+
     public class BeatLeaderPlayerScore
     {
         public String SongID { get; set; }

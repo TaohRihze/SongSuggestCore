@@ -107,7 +107,7 @@ namespace LinkedData
             {
                 //Gets the players score on the song being looked at
                 //***NEEDS to consider how to handle a -1 score from "Favorite not played" songs***
-                double activePlayerScore = songSuggest.activePlayer.GetScore(originSongID);
+                double activePlayerScore = songSuggest.activePlayer.GetRatedScore(originSongID,Actions.LeaderboardType.ScoreSaber);
                 
                 //Finds the amount of links with a better score than the players score, and ups the index with this amount
                 songIndex += songLinks.Where(c => c.originSongScore.songID == originSongID&& c.originSongScore.pp > activePlayerScore).ToList().Count();

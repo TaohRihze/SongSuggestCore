@@ -9,7 +9,7 @@ namespace SongLibraryNS
     {
         private static SongLibraryInstance _activeLibrary;
         public static Dictionary<string, Song> Songs => _activeLibrary?.songs ?? throw new InvalidOperationException("No Library Assigned");
-        public static bool Compare(SongID id1, SongID id2) { return _activeLibrary.Compare(id1,id2); }
+        //public static bool Compare(SongID id1, SongID id2) { return _activeLibrary.Compare(id1,id2); }
         public static string GetID(SongID songID, SongIDType songIDType) { return _activeLibrary.GetID(songID, songIDType); }
         public static Song SongIDToSong(SongID songID) { return _activeLibrary.SongIDToSong(songID); }
         public static Song StringIDToSong(string songID, SongIDType songIDType) { return _activeLibrary.StringIDToSong(songID, songIDType); }
@@ -18,7 +18,7 @@ namespace SongLibraryNS
         public static List<SongID> StringIDToSongID(List<string> stringIDs, SongIDType songIDType) { return _activeLibrary.StringIDToSongID(stringIDs, songIDType); }
         public static bool HasAnySongCategory(SongID songID, SongCategory songCategory) { return _activeLibrary.HasAnySongCategory(songID, songCategory); }
         public static String GetDisplayName(SongID songID) { return _activeLibrary.GetDisplayName(songID); }
-
+        public static List<SongID> GetAllRankedSongIDs(SongCategory songCategory) { return _activeLibrary.GetAllRankedSongIDs(songCategory); }
         //Should only be activated by a SongLibraryInstance's SetAsActiveLibrary();
         internal static void SetAsActiveLibrary(SongLibraryInstance songLibrary)
         {

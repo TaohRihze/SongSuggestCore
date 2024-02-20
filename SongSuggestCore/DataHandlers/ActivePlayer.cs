@@ -1,141 +1,197 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
+using Actions;
 using Newtonsoft.Json;
+using PlayerScores;
+using SongLibraryNS;
 using SongSuggestNS;
 
 namespace ActivePlayerData
 {
     public class ActivePlayer
     {
-        private SongSuggest songSuggest;
+        public List<ScoreLocation> ActiveScoreLocations { get; set; } = new List<ScoreLocation>();
+        internal SongSuggest songSuggest;
+        internal string PlayerID { get; } = "-1";
+        private Dictionary<ScoreLocation, IPlayerScores> scores = new Dictionary<ScoreLocation, IPlayerScores>();
 
-        public const String FormatVersion = "2.0";
-        public String currentSavedVersion { get; set; }
-        public String id { get; set; }
-        public String name { get; set; }
-        public int rankedPlayCount { get; set; }
-        public SortedDictionary<String, ActivePlayerScore> scores = new SortedDictionary<String, ActivePlayerScore>();
-
-        //No selected user (json extract or new user)
-        public ActivePlayer()
+        //songSuggest is used for links to which dataset to use, does not mean this is the ActivePlayer stored in that songSuggest. (e.g. 2nd players data in snipeSuggest)
+        public ActivePlayer(string playerID, SongSuggest songSuggest)
         {
-        }
-
-        //If there has been a user switch (and user is not -1) load user, else make an empty object the user from drive if cache is available and correct version, else creates a new user.
-        public void LoadActivePlayer(SongSuggest songSuggest)
-        {
-            //First chance to save the active songSuggest, as loaded instances do not have one, and it is kept private to avoid 
-            //saving it ... need to seperate data and actions to avoid this.
+            PlayerID = playerID;
             this.songSuggest = songSuggest;
-
-            //Find the ID that was requested.
-            String requestedID = songSuggest.activePlayerID;
-            String currentID = id;
-
-            //Update the ID of the active user, then figure out if there is cached data to load.
-            id = requestedID;
-
-            //Load data if requested user has changed to a new valid user (not -1) and attempt to load the user, else keep the current.
-            if (currentID != requestedID && requestedID != "-1")
-            {
-                songSuggest.log?.WriteLine("Attempting to Load Player");
-                ActivePlayer loadedPlayer = songSuggest.fileHandler.LoadActivePlayer(requestedID);
-                //Verify the loadedPlayer is in correct format.
-                if (loadedPlayer.currentSavedVersion == FormatVersion)
-                {
-                    //Move Data into this player
-                    name = loadedPlayer.name;
-                    rankedPlayCount = loadedPlayer.rankedPlayCount;
-                    scores = loadedPlayer.scores;
-                    currentSavedVersion = loadedPlayer.currentSavedVersion;
-                }
-                else
-                {
-                    //Leave data empty but update version to current, and set the user ID so it can be saved, and save the newly generated user.
-                    currentSavedVersion = FormatVersion;
-                    Save();
-                }
-            }
-            else
-            {
-                songSuggest.log?.WriteLine("Correct player was loaded or -1 user");
-            }
-            //Once data is updated, set the current cached users to this.
+            scores[ScoreLocation.ScoreSaber] = new ScoreSaberPlayerScoreManager() {ActivePlayer = this};
+            scores[ScoreLocation.BeatLeader] = new BeatLeaderPlayerScoreManager() {ActivePlayer = this};
+            scores[ScoreLocation.LocalScores] = new LocalPlayerScoreManager() {ActivePlayer = this};
         }
 
+        //Loads all the cached data on the active player, and clears any that is outdated.
+        public void Load()
+        {
+            //Load the data on the PlayerID related to this object.
+            foreach (IPlayerScores playerScores in scores.Values)
+            {
+                playerScores.Load();
+                playerScores.ClearIfOutdated();
+            }
+        }
+
+        //Saves all cached data.
         public void Save()
         {
-            songSuggest.fileHandler.SaveActivePlayer(this, id);
-        }
-
-        public Boolean OutdatedVersion()
-        {
-            songSuggest.log?.WriteLine("Format Version: " + FormatVersion);
-            songSuggest.log?.WriteLine("Disk Version: " + currentSavedVersion);
-            return !(currentSavedVersion == FormatVersion);
-        }
-
-        //Returns True if Score is added or updated, False if already present.
-        public Boolean AddScore(ActivePlayerScore score)
-        {
-            //Is song known
-            if (scores.ContainsKey(score.songID))
+            foreach (IPlayerScores playerScores in scores.Values)
             {
-                //Select song
-                ActivePlayerScore storedScore = scores[score.songID];
-                //Check if it is a newer score
-                if (storedScore.timeSet == score.timeSet)
-                {
-                    //songSuggest.log?.WriteLine("Unchanged Score on: " + score.songID);
-
-                    //Both scores have same timestamp, so ignore it inform requester nothing was changed.
-                    return false;
-                }
-                else
-                {
-                    songSuggest.log?.WriteLine("Updated Score on: "+score.songID);
-                    //Updated score ... update timestamp and pp value.
-                    storedScore.timeSet = score.timeSet;
-                    storedScore.pp = score.pp;
-                    storedScore.accuracy = score.accuracy;
-                    storedScore.rankPercentile = score.rankPercentile;
-                    storedScore.rankScoreSaber = score.rankScoreSaber;
-                    //songSuggest.log?.WriteLine("Updated Score on: " + score.songID);
-                }
+                playerScores.Save();
             }
-            //New score
-            else
+        }
+
+        //Refresh the active ScoreLocations data
+        public void Refresh()
+        {
+            songSuggest.log?.WriteLine($"Starting Fresh of {ActiveScoreLocations.Count}");
+            foreach (var location in ActiveScoreLocations)
             {
-                scores.Add(score.songID, score);
-                //songSuggest.log?.WriteLine("New Score on: " + score.songID);
+                songSuggest.log?.WriteLine($"Refreshing: {location}");
+                scores[location].Refresh();
+                songSuggest.log?.WriteLine($"Done refreshing: {location}");
             }
-
-            return true;
         }
 
-        //Returns a list of Ranked songs older than the selected days
-        public List<String> GetYoungerThan(int days)
+        //All Song Categories (except the BrokenDownloads)
+        private static SongCategory allCategories = (SongCategory)Enum.GetValues(typeof(SongCategory))
+            .Cast<int>()
+            .Except(new [] { (int)SongCategory.BrokenDownloads })
+            .Sum();
+
+        //Return all ranked songs within the active leaderboards
+        public List<SongID> GetRankedScoreIDs()
         {
-            DateTime target = DateTime.UtcNow.AddDays(-days);
-            List<String> answer = new List<String>();
-            foreach (ActivePlayerScore candidate in new List<ActivePlayerScore>(scores.Values))
+            return ActiveScoreLocations
+                .SelectMany(location => scores[location].GetRankedScoreIDs(allCategories))
+                .Distinct()
+                .ToList();
+        }
+
+        //Return all ranked songs within a given leaderboard
+        public List<SongID> GetRankedLocationScoreIDs(ScoreLocation scoreLocation)
+        {
+            return scores[scoreLocation].GetRankedScoreIDs(allCategories);
+        }
+
+        //Return all songs played on any ScoreLocation
+        public List<SongID> GetScoreIDs()
+        {
+            return ActiveScoreLocations
+                .SelectMany(location => scores[location].GetScoreIDs())
+                .Distinct()
+                .ToList();
+        }
+
+        //Checks if the SongID is present in any active ScoreLocations
+        public bool Contains(SongID songID)
+        {
+            return ActiveScoreLocations.Any(location => scores[location].Contains(songID));
+        }
+
+        //Return highest Accuracy of any location
+        public double GetAccuracy(SongID songID)
+        {
+            return ActiveScoreLocations.Max(location => scores[location].GetAccuracy(songID));
+        }
+
+        //Return highest Set Score (pp) of any location
+        public double GetRatedScore(SongID songID, LeaderboardType leaderboardType)
+        {
+            return ActiveScoreLocations.Max(location => scores[location].GetRatedScore(songID, leaderboardType));
+        }
+
+        //Return timeset on the score with the highest accuracy
+        public DateTime GetTimeSet(SongID songID)
+        {
+            var highestAccLocation = ActiveScoreLocations
+                .OrderByDescending(location => scores[location].GetAccuracy(songID))
+                .FirstOrDefault();
+
+            return scores[highestAccLocation].GetTimeSet(songID);
+        }
+
+        //Returns the world rank for a score on a specified leaderboard.
+        public int GetWorldRank(SongID songID, ScoreLocation scoreLocation)
+        {
+            var score = scores[scoreLocation].GetScore(songID);
+            if (score == null) return int.MaxValue;
+            return score.SourceRank;
+        }
+
+        //Returns the world percentile rank for a score on a specified leaderboard.
+        public double GetWorldPercentile(SongID songID, ScoreLocation scoreLocation)
+        {
+            var score = scores[scoreLocation].GetScore(songID);
+            if (score == null) return 1; //No score, 100% of players beat you.
+            return score.SourceRankPercentile;
+        }
+
+        //Returns the world plays for a score on a specified leaderboard.
+        public int GetWorldPlays(SongID songID, ScoreLocation scoreLocation)
+        {
+            var score = scores[scoreLocation].GetScore(songID);
+            if (score == null) return -1; //Player has no scores, so we did not cache amount of plays. Let UI figure this out.
+            return score.SourcePlays;
+        }
+
+        //Returns the related IPlayer of the Scorelocation.
+        internal IPlayerScores GetScoreLocation(ScoreLocation scoreLocation)
+        {
+            return scores[scoreLocation];
+        }
+
+        //sends values of different cached data to log
+        public void ShowCache()
+        {
+            foreach (var score in scores.Values)
             {
-                if (candidate.timeSet > target) answer.Add(candidate.songID);
+                score.ShowCache(songSuggest.log);
             }
-            return answer;
         }
+    }
 
-        public void ResetScores()
-        {
-            rankedPlayCount = 0;
-            scores = new SortedDictionary<String, ActivePlayerScore>();
-        }
+    //Source Manager connections.
+    public interface IPlayerScores
+    {
+        ActivePlayer ActivePlayer { get; set; }
 
-        public double GetScore(string songID)
-        {
-            return scores.Keys.Contains(songID) ? scores[songID].pp : -1.0;
-        }
+        //Loads the current score cache for the player on the related Scoreboard
+        void Load();
+        //Save the current score cache for the player on the related ScoreBoard
+        void Save();
+        //Clear all saved scores
+        void Clear();
+        //Verify if the loaded version is outdated compared to source data
+        void ClearIfOutdated();
+        //Refresh Data
+        void Refresh();
+        //Returns true if there is set a Score on the songID
+        bool Contains(SongID songID);
+
+        //Returns either DateTime of the score with the given ID, or min DateTime value
+        DateTime GetTimeSet(SongID songID);
+
+        //Returns the songs Accuracy in a 0-1 range (90% = 0.9)
+        double GetAccuracy(SongID songID);
+
+        //Returns the songs score on the Leaderboard (0 if unknown).
+        double GetRatedScore(SongID songID, LeaderboardType leaderboardType);
+
+        //Returns the Score Object of the given SongID
+        PlayerScore GetScore(SongID songID);
+
+        //Returns the SongIDs of songs in the given Leaderboard Categories
+        List<SongID> GetRankedScoreIDs(SongCategory songCategory);
+        //Returns the SongIDs of songs in the given Leaderboard Categories
+        List<SongID> GetScoreIDs();
+        void ShowCache(TextWriter log);
     }
 }

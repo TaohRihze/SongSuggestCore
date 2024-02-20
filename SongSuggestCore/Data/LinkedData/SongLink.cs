@@ -1,4 +1,5 @@
 ﻿using System;
+using SongLibraryNS;
 using SongSuggestNS;
 
 
@@ -37,7 +38,7 @@ namespace LinkedData
                 double targetMaxPP = GetMaxPP(songSuggest, targetID);
                 
                 //Split the 3 scores in PP/Acc and Acc
-                Split(out double activePlayerAcc, out double activePlayerPPAcc, songSuggest.activePlayer.scores[originID].pp, originMaxPP);
+                Split(out double activePlayerAcc, out double activePlayerPPAcc, songSuggest.activePlayer.GetRatedScore((ScoreSaberID)originID, Actions.LeaderboardType.ScoreSaber), originMaxPP);
                 Split(out double originPlayerAcc, out double originPlayerPPAcc, originSongScore.pp, originMaxPP);
                 Split(out double targetPlayerAcc, out double targetPlayerPPAcc, targetSongScore.pp, targetMaxPP);
 

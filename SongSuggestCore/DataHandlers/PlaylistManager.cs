@@ -90,14 +90,16 @@ namespace PlaylistNS
             playlist.songs = new List<SongJson>();
             foreach (var songID in songIDs)
             {
+                var song = songID.GetSong();
+
                 SongJson songJSON = new SongJson();
 
-                songJSON.hash = songSuggest.songLibrary.GetHash(songID);
+                songJSON.hash = song.hash;// songSuggest.songLibrary.GetHash(songID);
 
                 Difficulty difficultyJSON = new Difficulty();
                 //difficultyJSON.characteristic = "Standard";
-                difficultyJSON.characteristic = SongLibrary.SongIDToSong(songID).characteristic;
-                difficultyJSON.name =songSuggest.songLibrary.GetDifficultyName(songID);
+                difficultyJSON.characteristic = song.characteristic;//SongLibrary.SongIDToSong(songID).characteristic;
+                difficultyJSON.name = song.GetDifficultyText();//songSuggest.songLibrary.GetDifficultyName(songID);
 
                 songJSON.difficulties = new List<Difficulty>();
                 songJSON.difficulties.Add(difficultyJSON);

@@ -3,94 +3,192 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using SongLibraryNS;
+using ActivePlayerData;
+using ScoreSabersJson;
+using Actions;
+using Curve;
+using System.IO;
 
 namespace PlayerScores
 {
     //Stores and Handles local recorded scores when active.
     //Saves best score on each song since activation
-    public class LocalPlayerScoreManager
+    public class LocalPlayerScoreManager : IPlayerScores
     {
-        public bool updated { get; set; }
-        public SongSuggest songSuggest { get; set; }
-        public List<LocalPlayerScore> playerScores;
-        private SongIDType _songIDType = SongIDType.ScoreSaber; //For now Local Scores are stored in ScoreSaber ID's
+        public ActivePlayer ActivePlayer { get; set; }
+        public SongSuggest songSuggest => ActivePlayer.songSuggest;
+
+        //Standard Storage for load/save
+        private ScoreCollection scoreCollection = new ScoreCollection();
+
+        //Internal Link allowing multiples scores per songID
+        private Dictionary<SongID, List<PlayerScore>> groupedScores = new Dictionary<SongID, List<PlayerScore>>();
+
+        private SongIDType _songIDType = SongIDType.Internal;
+        internal bool updated;
 
         //Accuracy is a value of 0 to 1
-        public void AddScore(string songID, double accuracy)
+        //New scores MUST be added to both the groupedScores and the scoreCollection, so it can be saved and used
+        //(avoids having to recreate the full list for scoreCollection save every time a score is set).
+        public void AddScore(SongID songID, double accuracy)
         {
-            //Check if there is a local score and it needs updating
-            var matchingScores = playerScores.Where(c => c.SongID == songID).ToList();
-
-            //Check if matching scores are obsolette and either remove any obsolette scores, or if current are better mark return.
-            //Later this might need handling of multiple scores on same song, and remove oldest/worst depending on settings.
-            if (matchingScores.Count > 0)
+            Song song = songID.GetSong();
+            PlayerScore score = new PlayerScore()
             {
-                bool returnWhenDone = false;
-                foreach (var score in matchingScores)
-                {
-                    //For now remove better scores, might keep multiple scores later
-                    if (score.Accuracy < accuracy)
-                    {
-                        playerScores.Remove(score);
-                        updated = true;
-                    }
-                    else returnWhenDone = true;
-                }
-                if (returnWhenDone) return;
-            }
-
-            //Record the new score.
-            var tmpScore = new LocalPlayerScore()
-            {
-                SongID = songID,
-                SongName = SongLibrary.StringIDToSong(songID,SongIDType.ScoreSaber).name,
+                SongID = song.internalID,
+                SongName = song.name,
+                TimeSet = DateTime.UtcNow,
                 Accuracy = accuracy,
-                TimeSet = DateTime.UtcNow
             };
-            playerScores.Add(tmpScore);
+
+            //Adds the score to the grouped dataset
+            AddToGroupedScores(score);
+
+            //We add the score to scoreCollection, and mark that we have updated our records.
+            scoreCollection.PlayerScores.Add(score);
             updated = true;
+        }
+
+        //Lookup sorted scores, generated from load and added scores during the session, as this is based on scoreCollection, which is master additions to these do not modify updated.
+        private void AddToGroupedScores(PlayerScore score)
+        {
+            //Add the score to both groupedScores and scoreCollection
+            var songID = (SongID)(InternalID)score.SongID;
+            List<PlayerScore> scores;
+
+            //Either assign scores a known songID link, or create a new grouping and assign it to scores and dictionary
+            if (!groupedScores.TryGetValue(songID, out scores)) groupedScores.Add(songID, scores = new List<PlayerScore>());
+
+            //Add the score to the List grouping.
+            scores.Add(score);
         }
 
         public void Load()
         {
-            playerScores = songSuggest.fileHandler.LoadLocalScores();
+            //Load data.
+            scoreCollection = songSuggest.fileHandler.LoadScoreCollection($"Local{ActivePlayer.PlayerID}");
+
+            //Clear current stored data (replace with load)
+            groupedScores.Clear();
+
+            //Loop each score.
+            foreach (var score in scoreCollection.PlayerScores)
+            {
+                AddToGroupedScores(score);
+            }
         }
 
         public void Save()
         {
-            songSuggest.log?.WriteLine($"Saving Score");
-            songSuggest.fileHandler.SaveLocalScores(playerScores);
+            if (!updated) return;
+            songSuggest.log?.WriteLine($"Saving Local Scores");
+            songSuggest.fileHandler.SaveScoreCollection(scoreCollection, $"Local{ActivePlayer.PlayerID}");
             updated = false;
         }
 
-        //Returns a List of SongID's of the current ID type stored here
-        public List<SongID> GetScores(SongCategory songCategory)
+        public void Clear()
         {
-            var songIDs = playerScores
-                .Select(c => SongLibrary.StringIDToSongID(c.SongID, _songIDType))
+            scoreCollection = new ScoreCollection();
+            groupedScores.Clear();
+            Save();
+        }
+
+        //Yeah we do not refresh.
+        public void Refresh()
+        {
+        }
+
+        public void ClearIfOutdated()
+        {
+            if (!scoreCollection.Validate(songSuggest.filesMeta.top10kVersion))
+            {
+                Clear();
+                scoreCollection.ScoresMeta.DataVersion = songSuggest.filesMeta.top10kVersion;
+            }
+        }
+
+        //Returns the calculated score of the best stored song
+        public double GetRatedScore(SongID songID, LeaderboardType leaderboardType)
+        {
+            var song = songID.GetSong();
+
+            //Find the Grouped scores for the ID, and get the score with the best accuracy among those.
+            //If no group is found we instead set the score to null
+            PlayerScore score = groupedScores.TryGetValue(songID, out var scores)
+                ? scores.OrderByDescending(c => c.Accuracy)
+                        .FirstOrDefault()
+                //No groupedScores. We cannot return in a ternary statement, so we assign null and return after.
+                : null;
+
+            //No score was found we return the default value.
+            if (score == null) return 0;
+
+            switch (leaderboardType)
+            {
+                case LeaderboardType.ScoreSaber:
+                    return ScoreSaberCurve.PP(score.Accuracy, song.starScoreSaber);
+                case LeaderboardType.AccSaber:
+                    return AccSaberCurve.AP(score.Accuracy, song.complexityAccSaber);
+                case LeaderboardType.BeatLeader:
+                    return 0; //No Curve Calculation yet.
+                default:
+                    return 0;
+            }
+        }
+
+        //Returns a List of SongID's of the current ID type stored here
+        public List<SongID> GetRankedScoreIDs(SongCategory songCategory)
+        {
+            var songIDs = groupedScores
+                .Select(c => c.Key)                                             //Get the unique known SongID's (we do not care about how many entries, as long we got any we use them)
                 .Where(c => SongLibrary.HasAnySongCategory(c, songCategory))    //Select scores from Leaderboard with at least 1 match
                 .ToList();                                                      //Create the List needed
             return songIDs;
         }
 
-        public double GetAccuracy(string songID)
+        public List<SongID> GetScoreIDs()
         {
-            var score = playerScores.Where(c => c.SongID == songID)
-                .OrderByDescending(c => c.Accuracy)
-                .Select(c => c.Accuracy);
-
-            if (score.Count() == 0) return 0;
-            return score.First();
+            var songIDs = groupedScores
+                .Select(c => c.Key)                                             //Get the unique known SongID's (we do not care about how many entries, as long we got any we use them)
+                .ToList();                                                      //Create the List needed
+            return songIDs;
         }
 
-        public DateTime GetTimeSet(string songID)
+        public double GetAccuracy(SongID songID)
         {
-            var score = playerScores.Where(c => c.SongID == songID)
-                .OrderByDescending(c => c.TimeSet)
-                .Select(c => c.TimeSet);
+            return groupedScores.TryGetValue(songID, out var scores)
+                ? scores.OrderByDescending(c => c.Accuracy)
+                    .Select(c => c.Accuracy)
+                    .FirstOrDefault()
+                : 0;
+        }
 
-            if (score.Count() == 0) return DateTime.MinValue;
-            return score.First();
+        public DateTime GetTimeSet(SongID songID)
+        {
+            return groupedScores.TryGetValue(songID, out var scores)
+                ? scores.OrderByDescending(c => c.Accuracy)
+                    .Select(c => c.TimeSet)
+                    .FirstOrDefault()
+                : DateTime.MinValue;
+        }
+
+        public PlayerScore GetScore(SongID songID)
+        {
+            if (!groupedScores.ContainsKey(songID)) return null;
+            return groupedScores[songID].OrderByDescending(score => score.Accuracy).First();
+        }
+
+        public bool Contains(SongID songID)
+        {
+            return groupedScores.ContainsKey(songID);
+        }
+
+
+        public void ShowCache(TextWriter log)
+        {
+
+            log?.WriteLine($"Local Score Count Grouped: {groupedScores.Count()}");
+            log?.WriteLine($"                           {scoreCollection.PlayerScores.Count()}");
         }
     }
 }

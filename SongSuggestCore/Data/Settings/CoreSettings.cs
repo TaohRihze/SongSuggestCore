@@ -13,5 +13,7 @@ namespace Settings
         public bool UpdateAccSaberLeaderboard { get; set; } = true;
         public bool UseBeatLeaderLeaderboard { get; set; } = true;
         public bool UpdateBeatLeaderLeaderboard { get; set; } = true;
+        //Removes plays with Score Saber shared songs only in the Beat Leader score data.
+        public bool FilterScoreSaberBiasInBeatLeader { get; set; } = true;
     }
 }

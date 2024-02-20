@@ -34,19 +34,19 @@ namespace WebDownloading
         }
 
         //Generic web puller for scores (starts page 1, page 0 and 1 gives same results)
-        public PlayerScoreCollection GetScores(String id, String sorting, int count, int page)
+        public PlayerScoreCollection GetScoreSaberPlayerScores(String playerID, String sorting, int count, int page)
         {
             try
             {
                 _ScoreSaberThrottler.Call();
                 //https://scoresaber.com/api/player/76561197993806676/scores?limit=20&sort=recent&page=2
-                String scoresJSON = client.DownloadString("https://scoresaber.com/api/player/" + id + "/scores?limit=" + count + "&sort=" + sorting + "&page=" + page);
+                String scoresJSON = client.DownloadString("https://scoresaber.com/api/player/" + playerID + "/scores?limit=" + count + "&sort=" + sorting + "&page=" + page);
                 return JsonConvert.DeserializeObject<PlayerScoreCollection>(scoresJSON, serializerSettings);
             }
             catch (Exception ex)
             {
-                string path = $"https://scoresaber.com/api/player/{id}/scores?limit={count}&sort={sorting}&page={page}";
-                songSuggest.log?.WriteLine($"Error on user: {id} page: {page}\nPath:{path}\n{ex.Message}");
+                string path = $"https://scoresaber.com/api/player/{playerID}/scores?limit={count}&sort={sorting}&page={page}";
+                songSuggest.log?.WriteLine($"Error on user: {playerID} page: {page}\nPath:{path}\n{ex.Message}");
             }
             return new PlayerScoreCollection();
         }
@@ -196,8 +196,8 @@ namespace WebDownloading
                 _BeatLeaderThrottler.Call();
                 //https://api.beatleader.xyz/score/76561197993806676/6F316D488C43288F3079407829C1028A5E998EBC/ExpertPlus/Standard
                 String playerID = songSuggest.activePlayerID;
-                String songHash = songSuggest.songLibrary.GetHash(songID);
-                String songDifcName = songSuggest.songLibrary.GetDifficultyName(songID);
+                String songHash = songID.GetSong().hash;// songSuggest.songLibrary.GetHash(songID);
+                String songDifcName = songID.GetSong().GetDifficultyText();//songSuggest.songLibrary.GetDifficultyName(songID);
                 string webString = $"https://api.beatleader.xyz/score/{playerID}/{songHash}/{songDifcName}/Standard";
                 String songInfo = client.DownloadString(webString);
                 return JsonConvert.DeserializeObject<BeatLeaderScore>(songInfo, serializerSettings);
@@ -210,7 +210,7 @@ namespace WebDownloading
         }
 
         //Generic web puller for BeatLeader Compact Scores
-        public ScoresCompact GetBeatLeaderScoresCompact(int count, int page ,long fromUnixTimeStamp)
+        public ScoresCompact GetBeatLeaderScoresCompact(string playerID, int count, int page ,long fromUnixTimeStamp)
         {
             string webString = "";
             try
@@ -218,7 +218,6 @@ namespace WebDownloading
                 _BeatLeaderThrottler.Call();
                 //We grab oldest scores first, so updates are performed chronological
                 //https://api.beatleader.xyz/player/76561197993806676/scores/compact?sortBy=date&order=1&page=1&count=100&time_from=1700000000
-                String playerID = songSuggest.activePlayerID;
                 if (playerID == "-1") return new ScoresCompact();
                 webString = $"https://api.beatleader.xyz/player/{playerID}/scores/compact?sortBy=pp&order=0&page={page}&count={count}&time_from={fromUnixTimeStamp}";
                 String songInfo = client.DownloadString(webString);

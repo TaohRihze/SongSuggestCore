@@ -16,8 +16,6 @@ namespace Actions
 
             if (dto.useLikedSongs) originSongIDs.AddRange(dto.suggestSM.LikedSongs());
 
-
-
             int targetCount = originSongIDs.Count();
             dto.log?.WriteLine($"Liked Songs in list: {originSongIDs.Count()}");
 
@@ -25,7 +23,7 @@ namespace Actions
             dto.log?.WriteLine("Selected Liked Songs");
             foreach (var songID in originSongIDs)
             {
-                var song = SongLibrary.SongIDToSong(songID);
+                var song = songID.GetSong();
                 var songCategory = song.songCategory & dto.suggestSM.LeaderboardSongCategory();
                 var songName = SongLibrary.GetDisplayName(songID);
                 dto.log?.WriteLine($"SongCategory: {songCategory,-16}   Score: {dto.suggestSM.PlayerScoreValue(songID),8:N2}    {songName}");

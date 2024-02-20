@@ -23,7 +23,7 @@ namespace Actions
             SongLibraryInstance songLibrary = songSuggest.songLibrary;
 
             //Have the active player verify the active version and the wanted version is the same, else load any cached version or present an empty user
-            activePlayer.LoadActivePlayer(songSuggest);
+            activePlayer.Load(songSuggest);
 
             //Reset Data if required
             if (songSuggest.fileHandler.CheckPlayerRefresh())
@@ -44,7 +44,7 @@ namespace Actions
                 page++;
                 songSuggest.status = "Downloading Player History Page: " + page + "/" + maxPage;
                 songSuggest.log?.WriteLine("Page Start: " + page + " Search Mode: " + searchmode);
-                PlayerScoreCollection playerScoreCollection = webDownloader.GetScores(activePlayer.id, searchmode, 100, page);
+                PlayerScoreCollection playerScoreCollection = webDownloader.GetScores(songSuggest.activePlayerID, searchmode, 100, page);
                 if (playerScoreCollection.metadata == null)
                 { 
                     playerScoreCollection.metadata = new Metadata();
@@ -64,7 +64,7 @@ namespace Actions
                     if (score.leaderboard.maxScore == 0) score.leaderboard.maxScore = ManualData.SongMaxScore($"{score.leaderboard.id}", songSuggest);
 
                     //Create a score object from the website Score, and add it to the candidates
-                    ActivePlayerScore tmpScore = new ActivePlayerScore
+                    ScoreSaberPlayerScore tmpScore = new ScoreSaberPlayerScore
                     {
                         songID = score.leaderboard.id + "",
                         timeSet = score.score.timeSet,
