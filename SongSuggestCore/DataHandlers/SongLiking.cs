@@ -12,47 +12,47 @@ namespace BanLike
         
         public List<SongLike> likedSongs = new List<SongLike>();
 
-        public List<String> GetLikedIDs()
+        public List<SongID> GetLikedIDs()
         {
-            return likedSongs.Select(p => p.songID).ToList();
+            return likedSongs.Select(p => (SongID)(InternalID)p.songID).ToList();
         }
 
         //Returns true if Liked
         public Boolean IsLiked(String songHash, String difficulty)
         {
-            String songID = songSuggest.songLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID(songHash, difficulty);
             return IsLiked(songID);
         }
 
-        public Boolean IsLiked(String songID)
+        public Boolean IsLiked(SongID songID)
         {
-            return likedSongs.Any(p => p.songID == songID);
+            return likedSongs.Any(p => p.songID == songID.GetSong().internalID);
         }
 
         public void RemoveLike(String songHash, String difficulty)
         {
-            String songID = songSuggest.songLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID(songHash, difficulty);
             RemoveLike(songID);
         }
-        public void RemoveLike(String songID)
+        public void RemoveLike(SongID songID)
         {
-            likedSongs.RemoveAll(p => p.songID == songID);
+            likedSongs.RemoveAll(p => p.songID == songID.GetSong().internalID);
             Save();
         }
 
         public void SetLike(String songHash, String difficulty)
         {
-            String songID = songSuggest.songLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID(songHash, difficulty);
             SetLike(songID);
         }
-        public void SetLike(String songID)
+        public void SetLike(SongID songID)
         {
             //If a Like is in place, remove it before setting the new Like.
             if (IsLiked(songID)) RemoveLike(songID);
             likedSongs.Add(new SongLike { 
                 activated = DateTime.UtcNow, 
-                songID = songID,
-                songName = songSuggest.songLibrary.GetDisplayName((ScoreSaberID)songID)
+                songID = songID.GetSong().internalID,
+                songName = SongLibrary.GetDisplayName(songID)
             });
             Save();
         }

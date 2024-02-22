@@ -86,7 +86,7 @@ namespace Actions
         LeaderboardType leaderboard => settings.Leaderboard;
 
         //Filter Results
-        public List<SongID> distanceFilterOrdered;
+        //public List<SongID> distanceFilterOrdered;
         public List<SongID> styleFilterOrdered;
         public List<SongID> overWeightFilterOrdered;
 
@@ -213,7 +213,7 @@ namespace Actions
             songSuggest.log?.WriteLine("Completion: " + (songSuggestCompletion * 100) + "%");
 
             //Link the origin songs with the songs on the LeaderBoard as a basis for suggestions.
-            ignoreSongs = SongLibrary.StringIDToSongID(songSuggest.songBanning.GetPermaBannedIDs(), SongIDType.ScoreSaber);
+            ignoreSongs = songSuggest.songBanning.GetPermaBannedIDs();
             GenerateLinks.Execute(dto, out originSongs, out targetSongs, out linkedSongs);
             linkedPlayers = linkedSongs / 19; //Workaround for now there is always 19 linked songs per player, this may change.
             songSuggest.log?.WriteLine("Completion: " + (songSuggestCompletion * 100) + "%");
@@ -262,8 +262,8 @@ namespace Actions
             //Find most relevant songs for playlist selection
             songSuggest.status = "Selecting Best Matching Songs";
 
-            //Filter on PP value compared to users songs PP values
-            distanceFilterOrdered = targetSongs.endPoints.Values.OrderByDescending(s => s.weightedRelevanceScore).Select(p => p.songID).ToList();
+            ////Filter on PP value compared to users songs PP values
+            //distanceFilterOrdered = targetSongs.endPoints.Values.OrderByDescending(s => s.weightedRelevanceScore).Select(p => p.songID).ToList();
 
             //Filter on how much over/under linked a song is in the active players data vs the global player population
             styleFilterOrdered = targetSongs.endPoints.Values.OrderBy(s => (0.0 + suggestSM.Leaderboard().top10kSongMeta[s.songID].count) / (0.0 + s.proportionalStyle)).Select(p => p.songID).ToList();
@@ -387,17 +387,14 @@ namespace Actions
         }
 
         //Takes the orderes suggestions and apply the filter values to their ranks, and create the nameplate orderings
+        //**Consider rewriting to handle any amount of filters in the future (loop each filter for its position and record it before multiplying all).**
         public void EvaluateFilters()
         {
             Dictionary<SongID, double> totalScore = new Dictionary<SongID, double>();
 
             //Get Base Weights reset them from % value to [0-1], and must not all be 0)
-            double modifierDistance = 0.0; //settings.filterSettings.modifierPP / 100;  //Deprecated so disabled in future code.
             double modifierStyle = settings.FilterSettings.modifierStyle / 100;
             double modifierOverweight = settings.FilterSettings.modifierOverweight / 100;
-            //***test (hardcoded to max)
-            double modifierPP = 0;
-            double modifierPPLocalVSGlobal = 0;
 
             //reset if all = 0, reset to 100%.
             if (modifierStyle == 0 && modifierOverweight == 0) modifierStyle = modifierOverweight = 1.0;
@@ -405,19 +402,24 @@ namespace Actions
             songSuggest.log?.WriteLine($"Style: {modifierStyle} Overweight: {modifierOverweight}");
 
             //Get count of candidates, and remove 1, as index start as 0, so max value is songs-1
-            double totalCandidates = distanceFilterOrdered.Count() - 1;
-            //As all 3 filters contain same ID's we can loop the song IDs from either of the filters, and calculate their combined score.
-            foreach (SongID distanceCandidate in distanceFilterOrdered)
+            double totalCandidates = overWeightFilterOrdered.Count() - 1;
+
+            //We loop either of the 2 filters and record its ordering in a temporary dictionary for quick lookup.
+            Dictionary<SongID, int> overweightValues = new Dictionary<SongID, int>();
+            int rankCount = 0;
+            foreach (var songID in overWeightFilterOrdered)
+            {
+                overweightValues[songID] = rankCount;
+                rankCount++;
+            }
+
+            //Reset count and do the same for the 2nd, but we might as well do the calculations at the same time.
+            rankCount = 0;
+            foreach (SongID songID in styleFilterOrdered)
             {
                 //Get the location of the candidate in the list as a [0-1] value
-                double distanceValue = distanceFilterOrdered.IndexOf(distanceCandidate) / totalCandidates;
-                double styleValue = styleFilterOrdered.IndexOf(distanceCandidate) / totalCandidates;
-                double overWeightedValue = overWeightFilterOrdered.IndexOf(distanceCandidate) / totalCandidates;
-                //***test
-                //ppValue for distance replacement
-                double ppValue = ppFilterOrdered.IndexOf(distanceCandidate) / totalCandidates;
-                //ppLocalvsGlobal
-                double ppLocalVSGlobalValue = ppLocalVSGlobalOrdered.IndexOf(distanceCandidate) / totalCandidates;
+                double styleValue = rankCount / totalCandidates;
+                double overWeightedValue = overweightValues[songID] / totalCandidates;
 
                 //Switch the range from [0-1] to [0.5-1.5] and reduce the gap based on modifier weight.
                 //**Spacing between values may be more correct to consider a log spacing (e.g. due to 1.5*.0.5 != 1)
@@ -425,17 +427,18 @@ namespace Actions
                 //**Actual ratings in the 0.5 to 1.5 range is minimal at the "best suggestions range" even with quite a few filters.
                 //**So a "correct range" of 0.5 to 2 would give a higher penalty on bad matches on a single filter, so current
                 //**setup means a song must do worse on more filters to actual lose rank, which actually may be prefered.
-                double distanceTotal = distanceValue * modifierDistance + (1.0 - 0.5 * modifierDistance);
+                //double distanceTotal = distanceValue * modifierDistance + (1.0 - 0.5 * modifierDistance);
                 double styleTotal = styleValue * modifierStyle + (1.0 - 0.5 * modifierStyle);
                 double overWeightedTotal = overWeightedValue * modifierOverweight + (1.0 - 0.5 * modifierOverweight);
-                double ppTotal = ppValue * modifierPP + (1.0 - 0.5 * modifierPP);
-                double ppLocalVSGlobalTotal = ppLocalVSGlobalValue * modifierPPLocalVSGlobal + (1.0 - 0.5 * modifierPPLocalVSGlobal);
 
                 //Get the songs multiplied average 
-                double score = distanceTotal * styleTotal * overWeightedTotal * ppTotal * ppLocalVSGlobalTotal;
+                double score = styleTotal * overWeightedTotal;
 
                 //Add song ID and its score to a list for sorting and reducing size for the playlist generation
-                totalScore.Add(distanceCandidate, score);
+                totalScore.Add(songID, score);
+                
+                //Increase rank count for next song.
+                rankCount++;
             }
             //Sort list, and get song ID's only
             sortedSuggestions = totalScore.OrderBy(s => s.Value).Select(s => s.Key).ToList();
@@ -504,9 +507,9 @@ namespace Actions
             //Filter out ignoreSongs before making the playlist.
             //Get the ignore lists ready (permaban, ban, and improved within X days, not improveable by X ranks)
             songSuggest.status = "Preparing Ignore List";
-
+            UpdateTimeTaken("Before IgnoreList Creation");
             List<SongID> ignoreSongs = CreateIgnoreLists(ignorePlayedAll ? -1 : ignorePlayedDays);
-
+            UpdateTimeTaken("After IgnoreList Creation");
             filteredSuggestions = sortedSuggestions
                 .Except(ignoreSongs)
                 .ToList();
@@ -539,7 +542,7 @@ namespace Actions
 
             //Add the banned songs to the ignoresong list if not already on it.
             ignoreSongs = ignoreSongs
-                .Union(songSuggest.songBanning.GetBannedSongIDs())
+                .Union(songSuggest.songBanning.GetBannedIDs())
                 .ToList();
 
             //Add songs that is not expected to be improveable by X ranks

@@ -11,82 +11,62 @@ namespace BanLike
         public SongSuggest songSuggest { get; set; }
         public List<SongBan> bannedSongs = new List<SongBan>();
 
-        public List<string> GetBannedIDs()
-        {
-            return bannedSongs.Where(p => p.expire > DateTime.UtcNow).Select(p => p.songID).Distinct().ToList();
-        }
-
-        public List<SongID> GetBannedSongIDs()
+        public List<SongID> GetBannedIDs()
         {
             return bannedSongs
                 .Where(p => p.expire > DateTime.UtcNow)
-                .Select(p => (SongID)(ScoreSaberID)p.songID)
-                .Distinct()
-                .ToList();
-        }
-
-        public List<String> GetBannedIDs(BanType banType)
-        {
-            return bannedSongs
-                .Where(p => p.expire > DateTime.UtcNow)
-                .Where(p => p.banType == banType)
-                .Select(p => p.songID)
+                .Select(p => (SongID)(InternalID)p.songID)
                 .Distinct()
                 .ToList();
         }
 
         //Returns a list of all Permabanned Songs (this is from ALL BanTypes, as they all are set at max expire)
-        public List<String> GetPermaBannedIDs()
+        public List<SongID> GetPermaBannedIDs()
         {
-            return bannedSongs.Where(p => p.expire == DateTime.MaxValue).Select(p => p.songID).Distinct().ToList();
-        }
-        public List<String> GetPermaBannedIDs(BanType banType)
-        {
-            return bannedSongs.Where(p => p.expire == DateTime.MaxValue && p.banType == banType).Select(p => p.songID).Distinct().ToList();
+            return bannedSongs.Where(p => p.expire == DateTime.MaxValue).Select(p => (SongID)(InternalID)p.songID).Distinct().ToList();
         }
 
         public Boolean IsBanned(String songHash, String difficulty)
         {
-            String songID = songSuggest.songLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID(songHash, difficulty);
             return IsBanned(songID);
         }
-        public Boolean IsBanned(String songID)
+        public Boolean IsBanned(SongID songID)
         {
             return IsBanned(songID, BanType.SongSuggest);
         }
-        public Boolean IsBanned(String songID, BanType banType)
+        public Boolean IsBanned(SongID songID, BanType banType)
         {
-            return bannedSongs.Any(p => p.songID == songID && p.expire > DateTime.UtcNow && p.banType == banType);
+            return bannedSongs.Any(p => p.songID == songID.GetSong().internalID && p.expire > DateTime.UtcNow && p.banType == banType);
         }
-
 
         public Boolean IsPermaBanned(String songHash, String difficulty)
         {
-            return IsPermaBanned(songSuggest.songLibrary.GetID(songHash, difficulty));
+            return IsPermaBanned(SongLibrary.GetID(songHash, difficulty));
         }
-        public Boolean IsPermaBanned(String songID)
+        public Boolean IsPermaBanned(SongID songID)
         {
             return IsPermaBanned(songID, BanType.SongSuggest);
         }
-        public Boolean IsPermaBanned(String songID, BanType banType)
+        public Boolean IsPermaBanned(SongID songID, BanType banType)
         {
-            return bannedSongs.Any(p => p.songID == songID && p.expire == DateTime.MaxValue && p.banType == banType);
+            return bannedSongs.Any(p => p.songID == songID.GetSong().internalID && p.expire == DateTime.MaxValue && p.banType == banType);
         }
 
         public void LiftBan(String songHash, String difficulty)
         {
-            String songID = songSuggest.songLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID(songHash, difficulty);
             LiftBan(songID);
         }
 
-        public void LiftBan(String songID)
+        public void LiftBan(SongID songID)
         {
             LiftBan(songID, BanType.SongSuggest);
         }
 
-        public void LiftBan(String songID, BanType banType)
+        public void LiftBan(SongID songID, BanType banType)
         {
-            bannedSongs.RemoveAll(p => p.songID == songID && p.banType == banType);
+            bannedSongs.RemoveAll(p => p.songID == songID.GetSong().internalID && p.banType == banType);
             Save();
         }
 
@@ -95,28 +75,28 @@ namespace BanLike
             //If a ban is in place, remove it before setting the new ban.
             if (IsBanned(songHash, difficulty)) LiftBan(songHash, difficulty);
 
-            var songID = songSuggest.songLibrary.GetID(songHash, difficulty);
+            var songID = SongLibrary.GetID(songHash, difficulty);
             bannedSongs.Add(new SongBan
             {
                 expire = DateTime.UtcNow.AddDays(days),
                 activated = DateTime.UtcNow,
-                songID = songID,
+                songID = songID.GetSong().internalID,
                 banType = BanType.SongSuggest,
-                songName = songSuggest.songLibrary.GetDisplayName(songID)          
+                songName = SongLibrary.GetDisplayName(songID)          
             });
             Save();
         }
 
         public void SetPermaBan(String songHash, String difficulty)
         {
-            String songID = songSuggest.songLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID(songHash, difficulty);
             SetPermaBan(songID);
         }
-        public void SetPermaBan(String songID)
+        public void SetPermaBan(SongID songID)
         {
             SetPermaBan(songID, BanType.SongSuggest);
         }
-        public void SetPermaBan(String songID, BanType banType)
+        public void SetPermaBan(SongID songID, BanType banType)
         {
             //If a ban is in place, remove it before setting the new ban.
             if (IsBanned(songID, banType)) LiftBan(songID, banType);
@@ -124,7 +104,7 @@ namespace BanLike
             {
                 expire = DateTime.MaxValue,
                 activated = DateTime.UtcNow,
-                songID = songID,
+                songID = songID.GetSong().internalID,
                 banType = banType
             });
             Save();

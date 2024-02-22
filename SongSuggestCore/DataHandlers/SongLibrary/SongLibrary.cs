@@ -9,8 +9,7 @@ namespace SongLibraryNS
     {
         private static SongLibraryInstance _activeLibrary;
         public static Dictionary<string, Song> Songs => _activeLibrary?.songs ?? throw new InvalidOperationException("No Library Assigned");
-        //public static bool Compare(SongID id1, SongID id2) { return _activeLibrary.Compare(id1,id2); }
-        public static string GetID(SongID songID, SongIDType songIDType) { return _activeLibrary.GetID(songID, songIDType); }
+        public static SongID GetID(string hash, String difficulty) { return _activeLibrary.GetID(hash, difficulty); }
         public static Song SongIDToSong(SongID songID) { return _activeLibrary.SongIDToSong(songID); }
         public static Song StringIDToSong(string songID, SongIDType songIDType) { return _activeLibrary.StringIDToSong(songID, songIDType); }
         public static List<Song> SongIDToSong(List<SongID> songIDs) { return _activeLibrary.SongIDToSong(songIDs); }

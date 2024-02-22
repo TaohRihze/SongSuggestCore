@@ -116,6 +116,7 @@ namespace PlayerScores
         public void Clear()
         {
             scoreCollection = new ScoreCollection();
+            scoreCollection.ScoresMeta.DataVersion = songSuggest.filesMeta.top10kVersion;
             Save();
         }
 
@@ -125,7 +126,6 @@ namespace PlayerScores
             if (!scoreCollection.Validate(songSuggest.filesMeta.top10kVersion))
             {
                 Clear();
-                scoreCollection.ScoresMeta.DataVersion = songSuggest.filesMeta.top10kVersion;
             }
         }
 

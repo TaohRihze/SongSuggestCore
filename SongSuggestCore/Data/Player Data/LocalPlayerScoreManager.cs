@@ -86,6 +86,7 @@ namespace PlayerScores
             updated = false;
         }
 
+        //Should not be needed, but lets just have it ready.
         public void Clear()
         {
             scoreCollection = new ScoreCollection();
@@ -98,13 +99,9 @@ namespace PlayerScores
         {
         }
 
+        //Currently nothing gets outdated, all scores are calculated for use.
         public void ClearIfOutdated()
         {
-            if (!scoreCollection.Validate(songSuggest.filesMeta.top10kVersion))
-            {
-                Clear();
-                scoreCollection.ScoresMeta.DataVersion = songSuggest.filesMeta.top10kVersion;
-            }
         }
 
         //Returns the calculated score of the best stored song

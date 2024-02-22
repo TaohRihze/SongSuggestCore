@@ -69,6 +69,7 @@ namespace ActivePlayerData
         //Return all ranked songs within the active leaderboards
         public List<SongID> GetRankedScoreIDs()
         {
+            if (ActiveScoreLocations.Count == 0) return new List<SongID>();
             return ActiveScoreLocations
                 .SelectMany(location => scores[location].GetRankedScoreIDs(allCategories))
                 .Distinct()
@@ -84,6 +85,7 @@ namespace ActivePlayerData
         //Return all songs played on any ScoreLocation
         public List<SongID> GetScoreIDs()
         {
+            if (ActiveScoreLocations.Count == 0) return new List<SongID>();
             return ActiveScoreLocations
                 .SelectMany(location => scores[location].GetScoreIDs())
                 .Distinct()
@@ -93,24 +95,28 @@ namespace ActivePlayerData
         //Checks if the SongID is present in any active ScoreLocations
         public bool Contains(SongID songID)
         {
+            if (ActiveScoreLocations.Count == 0) return false;
             return ActiveScoreLocations.Any(location => scores[location].Contains(songID));
         }
 
         //Return highest Accuracy of any location
         public double GetAccuracy(SongID songID)
         {
+            if (ActiveScoreLocations.Count == 0) return 0;
             return ActiveScoreLocations.Max(location => scores[location].GetAccuracy(songID));
         }
 
         //Return highest Set Score (pp) of any location
         public double GetRatedScore(SongID songID, LeaderboardType leaderboardType)
         {
+            if (ActiveScoreLocations.Count == 0) return 0;
             return ActiveScoreLocations.Max(location => scores[location].GetRatedScore(songID, leaderboardType));
         }
 
         //Return timeset on the score with the highest accuracy
         public DateTime GetTimeSet(SongID songID)
         {
+            if (ActiveScoreLocations.Count == 0) return DateTime.MinValue;
             var highestAccLocation = ActiveScoreLocations
                 .OrderByDescending(location => scores[location].GetAccuracy(songID))
                 .FirstOrDefault();

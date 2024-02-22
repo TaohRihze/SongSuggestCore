@@ -21,10 +21,11 @@ namespace SongSuggestNS
 {
     public class SongSuggest
     {
+        public static TextWriter Log { get; set; }
         public String status { get; set; } = "Uninitialized";
         public ActivePlayer activePlayer { get; set; }
         //Default as an unset player. Place ID here and next RefreshActivePlayer() updates it.
-        public String activePlayerID => _coreSettings.UserID;
+        public String activePlayerID => CoreSettings.UserID;
         public FileHandler fileHandler { get; set; }
         public SongLibraryInstance songLibrary { get; set; }
         public WebDownloader webDownloader { get; set; }
@@ -51,12 +52,12 @@ namespace SongSuggestNS
         //Log Details Target (null means it is off), else set the writer here.
         public TextWriter log = null;
 
-        private CoreSettings _coreSettings;
+        internal CoreSettings CoreSettings { get; }
 
         //Configured how the program should be run.
         public SongSuggest(CoreSettings coreSettings)
         {
-            _coreSettings = coreSettings;
+            CoreSettings = coreSettings;
             Initialize();
         }
 
@@ -64,10 +65,11 @@ namespace SongSuggestNS
         private void Initialize()
         {
             //Enable Log
-            this.log = _coreSettings.Log;
+            this.log = CoreSettings.Log;
+            SongSuggest.Log = CoreSettings.Log;
             log?.WriteLine("Log Enabled in Constructor");
 
-            fileHandler = new FileHandler { songSuggest = this, filePathSettings = _coreSettings.FilePathSettings };
+            fileHandler = new FileHandler { songSuggest = this, filePathSettings = CoreSettings.FilePathSettings };
 
             webDownloader = new WebDownloader { songSuggest = this };
 
@@ -87,13 +89,13 @@ namespace SongSuggestNS
             songLiking = new SongLiking
             {
                 songSuggest = this,
-                likedSongs = fileHandler.LoadLikedSongs()
+                likedSongs = SetInternalID(fileHandler.LoadLikedSongs())
             };
 
             songBanning = new SongBanning
             {
                 songSuggest = this,
-                bannedSongs = fileHandler.LoadBannedSongs()
+                bannedSongs = SetInternalID(fileHandler.LoadBannedSongs())
             };
 
             lastSuggestions = new LastRankedSuggestions { songSuggest = this };
@@ -110,11 +112,12 @@ namespace SongSuggestNS
             accSaberScoreBoard.Load("AccSaberLeaderboardData");
 
             //Load the BeatLeader leaderboard if active.
-            if (_coreSettings.UseBeatLeaderLeaderboard) LoadBeatLeaderLeaderBoard();
+            if (CoreSettings.UseBeatLeaderLeaderboard) LoadBeatLeaderLeaderBoard();
 
             status = "Preparing Players Song History";
             //Creates an empty active player object
             activePlayer = new ActivePlayer(activePlayerID, this);
+            activePlayer.Load();
             RefreshActivePlayer();
 
 
@@ -122,11 +125,31 @@ namespace SongSuggestNS
             status = "Ready";
         }
 
+        private List<SongBan> SetInternalID(List<SongBan> songBans)
+        {
+            //Find the songID's without a hyphen and update them to internal (they are old ScoreSaber IDs)
+            foreach (var songBan in songBans.Where(c => !c.songID.Contains("-")))
+            {
+                    songBan.songID = SongLibrary.StringIDToSong(songBan.songID, SongIDType.ScoreSaber).internalID;
+            }
+            return songBans;
+        }
+
+        private List<SongLike> SetInternalID(List<SongLike> songLikes)
+        {
+            //Find the songID's without a hyphen and update them to internal (they are old ScoreSaber IDs)
+            foreach (var songBan in songLikes.Where(c => !c.songID.Contains("-")))
+            {
+                songBan.songID = SongLibrary.StringIDToSong(songBan.songID, SongIDType.ScoreSaber).internalID;
+            }
+            return songLikes;
+        }
+
         private void SetActiveLocations()
         {
             activePlayer.ActiveScoreLocations.Clear();
-            if (_coreSettings.UseScoreSaberLeaderboard || _coreSettings.UseAccSaberLeaderboard) activePlayer.ActiveScoreLocations.Add(ScoreLocation.ScoreSaber);
-            if (_coreSettings.UseBeatLeaderLeaderboard) activePlayer.ActiveScoreLocations.Add(ScoreLocation.BeatLeader);
+            if (CoreSettings.UseScoreSaberLeaderboard || CoreSettings.UseAccSaberLeaderboard) activePlayer.ActiveScoreLocations.Add(ScoreLocation.ScoreSaber);
+            if (CoreSettings.UseBeatLeaderLeaderboard) activePlayer.ActiveScoreLocations.Add(ScoreLocation.BeatLeader);
         }
 
         //Validate CacheFiles and download new versions if available.
@@ -139,19 +162,19 @@ namespace SongSuggestNS
 
 
                 //Perform ScoreSaber Updates if active
-                if (_coreSettings.UpdateScoreSaberLeaderboard)
+                if (CoreSettings.UpdateScoreSaberLeaderboard)
                 {
                     UpdateScoreSaberCacheFiles();
                 }
 
                 //Perform AccSaber Updates if active
-                if (_coreSettings.UpdateAccSaberLeaderboard)
+                if (CoreSettings.UpdateAccSaberLeaderboard)
                 {
                     UpdateAccSaberCacheFiles();
                 }
 
                 //Perform Beatleader Updates if active (May update the filesmeta version for its data if needed, so this is done after check with GIT data).
-                if (_coreSettings.UpdateBeatLeaderLeaderboard)
+                if (CoreSettings.UpdateBeatLeaderLeaderboard)
                 {
                     UpdateBeatLeaderCacheFiles();
                 }
@@ -163,7 +186,7 @@ namespace SongSuggestNS
 
         public void GenerateSongSuggestions(SongSuggestSettings settings)
         {
-            _coreSettings.UserID = settings.PlayerID;
+            CoreSettings.UserID = settings.PlayerID;
             RefreshActivePlayer();
 
             //Create the Song Suggestion (so once the creation has been made additional information can be kept and loaded from it.
@@ -175,13 +198,15 @@ namespace SongSuggestNS
             songSuggest.SuggestedSongs();
 
 
-            //Update nameplate rankings, and save them.
-            lastSuggestions.lastSuggestions = SongLibrary
-                .SongIDToSong(songSuggest.sortedSuggestions)
-                .Where(c => !string.IsNullOrEmpty(c.scoreSaberID))
-                .Select(c => c.scoreSaberID)
-                .ToList();
-            lastSuggestions.Save();
+            lastSuggestions.SetSuggestions(songSuggest.sortedSuggestions);
+
+            ////Update nameplate rankings, and save them.
+            //lastSuggestions.lastSuggestions = SongLibrary
+            //    .SongIDToSong(songSuggest.sortedSuggestions)
+            //    .Where(c => !string.IsNullOrEmpty(c.scoreSaberID))
+            //    .Select(c => c.scoreSaberID)
+            //    .ToList();
+            //lastSuggestions.Save();
 
             status = "Ready";
 
@@ -206,7 +231,7 @@ namespace SongSuggestNS
         public void GenerateOldestSongs(OldAndNewSettings settings)
         {
             //Refresh Player Data
-            _coreSettings.UserID = settings.scoreSaberID;
+            CoreSettings.UserID = settings.scoreSaberID;
             RefreshActivePlayer();
 
             oldestSongs = new OldAndNew(this);
@@ -261,7 +286,8 @@ namespace SongSuggestNS
         //Get the placement of a specific song in last RankedSongSuggest, "" if not given a rank.
         public string GetSongRanking(string hash, string difficulty)
         {
-            return lastSuggestions.GetRank(hash, difficulty);
+            SongID songID = songLibrary.GetID(hash, difficulty);
+            return lastSuggestions.GetRank(songID);
         }
 
         //Amount of linked songs in last RankedSongSuggest evaluation
@@ -273,13 +299,19 @@ namespace SongSuggestNS
         public string GetAPString(string hash, string difficulty)
         {
             var songID = songLibrary.GetID(hash, difficulty);
+
+            //Add Local Scores if needed
+            bool localScoresPresent = activePlayer.ActiveScoreLocations.Contains(ScoreLocation.LocalScores);
+            if (!localScoresPresent) activePlayer.ActiveScoreLocations.Add(ScoreLocation.LocalScores);
+
             var AP = activePlayer.GetRatedScore(songID, LeaderboardType.AccSaber);
-            //var song = songID.GetSong();
-            //ActivePlayerData.ScoreSaberPlayerScore score = null;
-            //if (activePlayer.scores.TryGetValue(song.scoreSaberID, out var result)) score = result;
-            //if (score == null) return "";
-            //var AP = AccSaberCurve.AP(score.accuracy/100, song.complexityAccSaber);
+
+            //Remove local again if added.
+            if (!localScoresPresent) activePlayer.ActiveScoreLocations.Remove(ScoreLocation.LocalScores);
+            
             return AP == 0 ? "" : $"{AP:0.00}AP";
+
+
         }
 
 
@@ -345,12 +377,6 @@ namespace SongSuggestNS
             //PlayerCache needs update, if the format has changed, or there is a new major update of the 10k data.
             bool formatChange = fileFormatDiskVersion.activePlayerVersion != fileFormatExpectedVersion.activePlayerVersion;
             bool contentChange = diskVersion.Major(FilesMetaType.Top10kVersion) != cacheFilesWebVersion.Major(FilesMetaType.Top10kVersion);
-            if (formatChange || contentChange)
-            {
-                if (!fileHandler.CheckPlayerRefresh()) fileHandler.TogglePlayerRefresh();
-                filesUpdated = true;
-                log?.WriteLine("Marked Playerdata for Refresh");
-            }
 
             //SongLibrary is checked
             //All Song library data changes are major. (New Songs/Reweights).
@@ -408,7 +434,7 @@ namespace SongSuggestNS
             long lastUpdate = webDownloader.GetBeatLeaderLeaderboardUpdateTime();
 
             DateTime lastUpdateDateTime = DateTimeOffset.FromUnixTimeSeconds(lastUpdate).DateTime;
-            log?.WriteLine($"Leaderboard Web Update Time. Unix: {lastUpdate} Time: {lastUpdateDateTime:d}");
+            log?.WriteLine($"Beat Leader Web Update Time. Unix: {lastUpdate} Time: {lastUpdateDateTime:d}");
 
             //Updates the leaderboard if needed.
             if (filesMeta.beatLeaderLeaderboardUpdated < lastUpdate)
@@ -511,7 +537,7 @@ namespace SongSuggestNS
             beatLeaderPlayerList = beatLeaderPlayerList.Except(toRemove).ToList();
 
             //We cannot perform these action until we have loaded the Song Library, which is after we update the files, so we mark this for later when we can do this.
-            if (_coreSettings.FilterScoreSaberBiasInBeatLeader) removeScoreSaberOnlyScoresFromBeatLeaderLeaderBoard = true;
+            if (CoreSettings.FilterScoreSaberBiasInBeatLeader) removeScoreSaberOnlyScoresFromBeatLeaderLeaderBoard = true;
 
             //Save the pruned file
             fileHandler.SaveScoreBoard(beatLeaderPlayerList, "BeatLeaderLeaderboard");

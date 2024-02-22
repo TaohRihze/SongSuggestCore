@@ -8,6 +8,7 @@ using ActivePlayerData;
 using Actions;
 using Curve;
 using System.IO;
+using System.Data.Common;
 
 namespace PlayerScores
 {
@@ -24,6 +25,9 @@ namespace PlayerScores
         public void Load()
         {
             scoreCollection = songSuggest.fileHandler.LoadScoreCollection($"BL{ActivePlayer.PlayerID}");
+            songSuggest.log?.WriteLine();
+
+            songSuggest.log?.WriteLine($"BL Cache Scores Loaded: ScoresMeta.FormatVersion({scoreCollection.ScoresMeta.FormatVersion})  ScoresMeta.DataVersion({scoreCollection.ScoresMeta.DataVersion})");
         }
 
         public void Save()
@@ -111,15 +115,16 @@ namespace PlayerScores
         public void Clear()
         {
             scoreCollection = new ScoreCollection();
+            scoreCollection.ScoresMeta.DataVersion = $"{songSuggest.filesMeta.beatLeaderLeaderboardUpdated}";
             Save();
         }
 
         public void ClearIfOutdated()
         {
+            songSuggest.log?.WriteLine("Clear Outdated Check: Beat Leader");
             if (!scoreCollection.Validate($"{songSuggest.filesMeta.beatLeaderLeaderboardUpdated}"))
             {
                 Clear();
-                scoreCollection.ScoresMeta.DataVersion = $"{songSuggest.filesMeta.beatLeaderLeaderboardUpdated}";
             }
         }
 
