@@ -59,7 +59,10 @@ namespace BanLike
 
         public void Save()
         {
-            songSuggest.fileHandler.SaveLikedSongs(likedSongs);
+            var orderedLikedSongs = likedSongs
+                .OrderBy(c => c.songName)
+                .ToList();
+            songSuggest.fileHandler.SaveLikedSongs(orderedLikedSongs);
         }
     }
 }

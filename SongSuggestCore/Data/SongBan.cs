@@ -10,10 +10,10 @@ namespace BanLike
     }
     public class SongBan
     {
+        public String songName { get; set; }
         public DateTime expire { get; set; }
         public DateTime activated { get; set; }
         public String songID { get; set; }
-        public String songName { get; set; }
         public BanType banType { get; set; }
     }
 }

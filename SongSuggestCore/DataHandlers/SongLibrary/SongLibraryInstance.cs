@@ -318,6 +318,7 @@ namespace SongLibraryNS
             //**This is a temporary workaround along with the ScoreSaberID Null
             songSuggest.filesMeta.beatLeaderSongsUpdated = 0;
             songSuggest.fileHandler.SaveFilesMeta(songSuggest.filesMeta);
+            _CachedSongIDs.Clear(); //Songs may have been removed, so we should not hand out incorrect SongID links moving forward.
         }
 
         //Activate SongType/s

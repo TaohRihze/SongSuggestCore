@@ -106,7 +106,8 @@ namespace PlayerScores
                     }
                 }
 
-                songSuggest.log?.WriteLine($"Completed Pages: {loadedPages}/{(records - 1) / scoresPerPage + 1}");
+                songSuggest.log?.WriteLine($"BeatLeader Completed Pages: {loadedPages}/{(records - 1) / scoresPerPage + 1}");
+                songSuggest.status = $"BeatLeader Completed Pages: {loadedPages}/{(records - 1) / scoresPerPage + 1}";
             }
             Save();
             songSuggest.log?.WriteLine($"BL Scores: {playerScores.Count()}");

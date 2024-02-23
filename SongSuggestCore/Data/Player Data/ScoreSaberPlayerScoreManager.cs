@@ -106,7 +106,8 @@ namespace PlayerScores
                 //Update status
                 loadedPages = scores.metadata.page;
                 records = scores.metadata.total;
-                songSuggest.log?.WriteLine($"Completed Pages: {loadedPages}/{(records - 1) / scoresPerPage + 1}");
+                songSuggest.log?.WriteLine($"ScoreSaber Completed Pages: {loadedPages}/{(records - 1) / scoresPerPage + 1}");
+                songSuggest.status = $"ScoreSaber Completed Pages: {loadedPages}/{(records - 1) / scoresPerPage + 1}";
             }
 
             //Update completed without errors, so we save the updated local cache.

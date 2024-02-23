@@ -113,7 +113,11 @@ namespace BanLike
 
         public void Save()
         {
-            songSuggest.fileHandler.SaveBannedSongs(bannedSongs.Where(p => p.expire > DateTime.UtcNow).ToList());
+            var orderedBannedSongs = bannedSongs
+                .Where(p => p.expire > DateTime.UtcNow)
+                .OrderBy(c => c.songName)
+                .ToList();
+            songSuggest.fileHandler.SaveBannedSongs(orderedBannedSongs);
         }
     }
 }

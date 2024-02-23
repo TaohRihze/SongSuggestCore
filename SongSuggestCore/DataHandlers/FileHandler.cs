@@ -56,107 +56,28 @@ namespace FileHandling
             File.WriteAllText(filePathSettings.playlistPath + fileName + ".bplist", JsonConvert.SerializeObject(playlist, serializerSettings));
         }
 
-        ////Load Active Players Data
-        //public ActivePlayer LoadActivePlayer()
-        //{
-        //    string activePlayer = songSuggest.activePlayerID;
-        //    if (!File.Exists(filePathSettings.activePlayerDataPath + activePlayer + ".json")) SaveActivePlayer(new ActivePlayer());
-        //    String activePlayerString = File.ReadAllText(filePathSettings.activePlayerDataPath + activePlayer + ".json");
-        //    return JsonConvert.DeserializeObject<ActivePlayer>(activePlayerString, serializerSettings);
-        //}
-
-        ////Save Active Players Data
-        //public void SaveActivePlayer(ActivePlayer scoreSaberScores)
-        //{
-        //    string activePlayer = songSuggest.activePlayerID;
-        //    File.WriteAllText(filePathSettings.activePlayerDataPath + $"{activePlayer}.json", JsonConvert.SerializeObject(scoreSaberScores));
-        //}
-
-        ////Load Active Players Local Scores
-        //public List<LocalPlayerScore> LoadLocalScores()
-        //{
-        //    if (!File.Exists(filePathSettings.activePlayerDataPath + "Local Scores.json")) SaveLocalScores(new List<LocalPlayerScore>());
-        //    String loadedString = File.ReadAllText(filePathSettings.activePlayerDataPath + "Local Scores.json");
-        //    return JsonConvert.DeserializeObject<List<LocalPlayerScore>>(loadedString, serializerSettings);
-        //}
-
-        ////Save Active Players Local Scores
-        //public void SaveLocalScores(List<LocalPlayerScore> localScores)
-        //{
-        //    File.WriteAllText(filePathSettings.activePlayerDataPath + "Local Scores.json", JsonConvert.SerializeObject(localScores));
-        //}
-
-        ////Load Active Players ScoreSaber scores
-        //public LocalScores LoadScoresCollection()
-        //{
-        //    return LoadScoresCollection(songSuggest.activePlayer.PlayerID);
-        //}
-
-        ////Save Active Players ScoreSaber Scores
-        //public void SaveScoresCollection(LocalScores scoreSaberScores)
-        //{
-        //    SaveScoresCollection(scoreSaberScores, songSuggest.activePlayer.PlayerID);
-        //}
-
-        //Load Players ScoreSaber Scores
+        //Load Players Cached Scores
         public ScoreCollection LoadScoreCollection(string filename)
         {
             if (!File.Exists(filePathSettings.activePlayerDataPath + $"{filename}.json")) SaveScoreCollection(new ScoreCollection(), filename);
             String loadedString = File.ReadAllText(filePathSettings.activePlayerDataPath + $"{filename}.json");
-            return JsonConvert.DeserializeObject<ScoreCollection>(loadedString, serializerSettings);
+            //Collections may be in old format, if that is the case replace them with an empty one.            
+            try
+            {
+                return JsonConvert.DeserializeObject<ScoreCollection>(loadedString, serializerSettings);
+            }
+            catch
+            {
+                songSuggest.log?.WriteLine($"Failed to convert: {filePathSettings.activePlayerDataPath}{filename}. Creating new");
+                SaveScoreCollection(new ScoreCollection(), filename);
+                return new ScoreCollection();
+            }
         }
 
-        //Save Players ScoreSaber Scores
+        //Save Players Cached Scores
         public void SaveScoreCollection(ScoreCollection playerScores, string filename)
         {
             File.WriteAllText(filePathSettings.activePlayerDataPath + $"{filename}.json", JsonConvert.SerializeObject(playerScores));
-        }
-
-        ////Load Active Players BeatLeader scores
-        //public BeatLeaderScores LoadBeatLeaderScores()
-        //{
-        //    return LoadBeatLeaderScores(songSuggest.activePlayer.PlayerID);
-        //}
-
-        ////Load Any Active Players BeatLeader Scores
-        //public BeatLeaderScores LoadBeatLeaderScores(string playerID)
-        //{
-        //    if (!File.Exists(filePathSettings.activePlayerDataPath + $"BL{playerID}.json")) SaveBeatLeaderScores(new BeatLeaderScores());
-        //    String loadedString = File.ReadAllText(filePathSettings.activePlayerDataPath + $"BL{playerID}.json");
-        //    return JsonConvert.DeserializeObject<BeatLeaderScores>(loadedString, serializerSettings);
-        //}
-
-        ////Save Active Players BeatLeader Scores
-        //public void SaveBeatLeaderScores(BeatLeaderScores beatLeaderScores)
-        //{
-        //    SaveBeatLeaderScores(beatLeaderScores, songSuggest.activePlayer.PlayerID);
-        //}
-
-        ////Save Any Players Beat Leader Scores
-        //public void SaveBeatLeaderScores(BeatLeaderScores beatLeaderScores, string playerID)
-        //{
-        //    File.WriteAllText(filePathSettings.activePlayerDataPath + $"BL{playerID}.json", JsonConvert.SerializeObject(beatLeaderScores));
-        //}
-
-        //Is there a player Refresh File
-        public Boolean CheckPlayerRefresh()
-        {
-            return File.Exists(filePathSettings.activePlayerDataPath + "RefreshPlayer.txt");
-        }
-
-        //Adds/removes the player refresh file
-        public void TogglePlayerRefresh()
-        {
-            if(CheckPlayerRefresh())
-            //Remove File
-            {
-                File.Delete(filePathSettings.activePlayerDataPath + "RefreshPlayer.txt");
-            }
-            //Add File
-            else
-            {
-                File.WriteAllText(filePathSettings.activePlayerDataPath + "RefreshPlayer.txt", "Remind Me: Reset Player Profile");
-            }
         }
 
         public List<Top10kPlayer> LoadScoreBoard(string scoreBoardName)

@@ -4,22 +4,6 @@ using System.IO;
 
 namespace Settings
 {
-    ////Suggested locations shown, keep in mind the base path should also be included prior
-    ////**Consider rewrite to defaulting paths, and have a variable for base path, and use custom Gets
-    //public class FilePathSettings
-    //{
-    //    public String songLibraryPath { get; set; } // = "\\";
-    //    public String playlistPath { get; set; } //= "\\Playlists\\";
-    //    public String activePlayerDataPath { get; set; } //= "\\Players\\";
-    //    public String top10kPlayersPath { get; set; } //= "\\";
-    //    public String bannedSongsPath { get; set; } //= "\\";
-    //    public String likedSongsPath { get; set; } //= "\\";
-    //    public String filesDataPath { get; set; } //= "\\";
-    //    public String lastSuggestionsPath { get; set; } //= "\\";
-    //    public String rankedData { get; set; } //= "\\RankedSongs";
-
-    //}
-
     //All modified paths should be given without leading or trailing folder separators. Return values will be given with a trailing separator.
     public class FilePathSettings
     {

@@ -82,16 +82,17 @@ namespace PlayerScores
         {
             if (!updated) return;
             songSuggest.log?.WriteLine($"Saving Local Scores");
+            scoreCollection.PlayerScores = scoreCollection.PlayerScores.OrderBy(c => c.SongName).ToList();
             songSuggest.fileHandler.SaveScoreCollection(scoreCollection, $"Local{ActivePlayer.PlayerID}");
             updated = false;
         }
 
-        //Should not be needed, but lets just have it ready.
+        //Local Scores should not be cleared.
         public void Clear()
         {
-            scoreCollection = new ScoreCollection();
-            groupedScores.Clear();
-            Save();
+            //scoreCollection = new ScoreCollection();
+            //groupedScores.Clear();
+            //Save();
         }
 
         //Yeah we do not refresh.

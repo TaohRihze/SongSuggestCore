@@ -89,13 +89,13 @@ namespace SongSuggestNS
             songLiking = new SongLiking
             {
                 songSuggest = this,
-                likedSongs = SetInternalID(fileHandler.LoadLikedSongs())
+                likedSongs = UpdateOldRecords(fileHandler.LoadLikedSongs())
             };
 
             songBanning = new SongBanning
             {
                 songSuggest = this,
-                bannedSongs = SetInternalID(fileHandler.LoadBannedSongs())
+                bannedSongs = UpdateOldRecords(fileHandler.LoadBannedSongs())
             };
 
             lastSuggestions = new LastRankedSuggestions { songSuggest = this };
@@ -125,22 +125,35 @@ namespace SongSuggestNS
             status = "Ready";
         }
 
-        private List<SongBan> SetInternalID(List<SongBan> songBans)
+        private List<SongBan> UpdateOldRecords(List<SongBan> songBans)
         {
             //Find the songID's without a hyphen and update them to internal (they are old ScoreSaber IDs)
             foreach (var songBan in songBans.Where(c => !c.songID.Contains("-")))
             {
-                    songBan.songID = SongLibrary.StringIDToSong(songBan.songID, SongIDType.ScoreSaber).internalID;
+                songBan.songID = SongLibrary.StringIDToSong(songBan.songID, SongIDType.ScoreSaber).internalID;
             }
+
+            foreach (var songBan in songBans.Where(c => string.IsNullOrEmpty(c.songName)))
+            {
+                SongID songID = (InternalID)songBan.songID;
+                songBan.songName = SongLibrary.GetDisplayName(songID);
+            }
+
             return songBans;
         }
 
-        private List<SongLike> SetInternalID(List<SongLike> songLikes)
+        private List<SongLike> UpdateOldRecords(List<SongLike> songLikes)
         {
             //Find the songID's without a hyphen and update them to internal (they are old ScoreSaber IDs)
-            foreach (var songBan in songLikes.Where(c => !c.songID.Contains("-")))
+            foreach (var songLike in songLikes.Where(c => !c.songID.Contains("-")))
             {
-                songBan.songID = SongLibrary.StringIDToSong(songBan.songID, SongIDType.ScoreSaber).internalID;
+                songLike.songID = SongLibrary.StringIDToSong(songLike.songID, SongIDType.ScoreSaber).internalID;
+            }
+
+            foreach (var songLike in songLikes.Where(c => string.IsNullOrEmpty(c.songName)))
+            {
+                SongID songID = (InternalID)songLike.songID;
+                songLike.songName = SongLibrary.GetDisplayName(songID);
             }
             return songLikes;
         }
@@ -158,9 +171,6 @@ namespace SongSuggestNS
             //Try and perform the update, if it fails, ohh well we try next time. Suggestions quality do not drop with a missed update.
             try
             {
-
-
-
                 //Perform ScoreSaber Updates if active
                 if (CoreSettings.UpdateScoreSaberLeaderboard)
                 {
@@ -197,31 +207,10 @@ namespace SongSuggestNS
             };
             songSuggest.SuggestedSongs();
 
-
             lastSuggestions.SetSuggestions(songSuggest.sortedSuggestions);
 
-            ////Update nameplate rankings, and save them.
-            //lastSuggestions.lastSuggestions = SongLibrary
-            //    .SongIDToSong(songSuggest.sortedSuggestions)
-            //    .Where(c => !string.IsNullOrEmpty(c.scoreSaberID))
-            //    .Select(c => c.scoreSaberID)
-            //    .ToList();
-            //lastSuggestions.Save();
-
             status = "Ready";
-
-            //songSuggest.ShowCache();
-            //songLibrary.ShowCache();
         }
-
-        ////Requires a RankedSongsSuggest has been performed, then it evaluates the linked songs without updating the user via new settings.
-        ////**Consider checks for updates of user, and that RankedSongsSuggest has already been performed**
-        //public void Recalculate(SongSuggestSettings settings)
-        //{
-        //    if (songSuggest == null) return;
-        //    songSuggest.settings = settings;
-        //    songSuggest.Recalculate();
-        //}
 
         public void ClearSongSuggestions()
         {
@@ -335,11 +324,10 @@ namespace SongSuggestNS
             fileHandler.SaveLikedSongs(songLiking.likedSongs);
         }
 
-        //Sets a reminder for next RefreshActivePlayer() to perform a full reload of the users data.
+        //Clears the stored cache files
         public void ClearUser()
         {
-            //Set Reminder file if missing (Can be set to true multiple times, hence check if already set)
-            if (!fileHandler.CheckPlayerRefresh()) fileHandler.TogglePlayerRefresh();
+            activePlayer.ClearCache();
         }
 
         public String SongCategoryText(String lookup)
@@ -462,9 +450,6 @@ namespace SongSuggestNS
                     song.starBeatLeader = 0;
                     song.beatLeaderID = null;
                 }
-
-                //Have Song Library unlink songs
-                songLibrary.RemoveSongsWithoutSongCategories();
 
                 var songs = webDownloader.GetBeatLeaderRankedSongs(filesMeta.beatLeaderLeaderboardUpdated);
                 var standardSongs = songs

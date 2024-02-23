@@ -11,9 +11,9 @@ namespace PlayerScores
         public ScoresMeta ScoresMeta { get; set; } = new ScoresMeta() { FormatVersion = _formatVersion};
         public bool Validate(String expectedDataVersion)
         {
-            SongSuggest.Log?.WriteLine($"ScoresMeta.FormatVersion({ScoresMeta.FormatVersion}) != _formatVersion({_formatVersion})");
+            SongSuggest.Log?.WriteLine($"ScoresMeta.FormatVersion({ScoresMeta.FormatVersion}) vs _formatVersion({_formatVersion})");
             if (ScoresMeta.FormatVersion != _formatVersion) return false;
-            SongSuggest.Log?.WriteLine($"ScoresMeta.DataVersion({ScoresMeta.DataVersion}) != expectedDataVersion({expectedDataVersion})");
+            SongSuggest.Log?.WriteLine($"ScoresMeta.DataVersion({ScoresMeta.DataVersion}) vs expectedDataVersion({expectedDataVersion})");
             if (ScoresMeta.DataVersion != expectedDataVersion) return false;
             return true; //Validated
         }

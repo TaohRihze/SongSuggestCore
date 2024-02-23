@@ -4,8 +4,8 @@ namespace PlayerScores
 {
     public class PlayerScore
     {
-        public String SongID { get; set; } //ID of the song, Internal ID recommended.
         public String SongName { get; set; } //Songs name, only used for viewing json
+        public String SongID { get; set; } //ID of the song, Internal ID recommended.
         public DateTime TimeSet { get; set; }
         public float RatedScore { get; set; } //Cached PP value from Source Location
         public double Accuracy { get; set; }

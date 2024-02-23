@@ -162,6 +162,15 @@ namespace ActivePlayerData
                 score.ShowCache(songSuggest.log);
             }
         }
+
+        //Clears external data (Local Scores does not clear).
+        internal void ClearCache()
+        {
+            foreach (var score in scores.Values)
+            {
+                score.Clear();
+            }
+        }
     }
 
     //Source Manager connections.
