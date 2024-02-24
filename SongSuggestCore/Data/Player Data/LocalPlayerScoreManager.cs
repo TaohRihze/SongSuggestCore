@@ -188,5 +188,34 @@ namespace PlayerScores
             log?.WriteLine($"Local Score Count Grouped: {groupedScores.Count()}");
             log?.WriteLine($"                           {scoreCollection.PlayerScores.Count()}");
         }
+
+        //Convert and Add old LocalScores
+        public void ImportOldLocalScores()
+        {
+            var scores = songSuggest.fileHandler.LoadOldLocalScores();
+
+            foreach (var score in scores)
+            {
+                SongID songID = (ScoreSaberID)score.SongID;
+                Song song = songID.GetSong();
+
+                if (song == null) continue;
+
+                score.SongID = song.internalID;
+                score.SongName = song.name;
+
+                //Adds the score to the grouped dataset
+                AddToGroupedScores(score);
+
+                //We add the score to scoreCollection, and mark that we have updated our records.
+                scoreCollection.PlayerScores.Add(score);
+                updated = true;
+            }
+
+            Save();
+
+            //Delete cached file
+            songSuggest.fileHandler.RemoveOldLocalScores();
+        }
     }
 }

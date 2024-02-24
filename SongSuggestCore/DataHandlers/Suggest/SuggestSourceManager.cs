@@ -12,7 +12,7 @@ namespace Actions
     public class SuggestSourceManager
     {
         public SongSuggest songSuggest { get; set; }
-        public ScoreLocation scoreLocation { get; set; } = ScoreLocation.ScoreSaber;
+        //public ScoreLocation scoreLocation { get; set; } = ScoreLocation.ScoreSaber;
         public LeaderboardType leaderboardType { get; set; } = LeaderboardType.ScoreSaber;
 
         //Return all the players SongIDs regardless of leaderboard. A recorded score is a recorded score.

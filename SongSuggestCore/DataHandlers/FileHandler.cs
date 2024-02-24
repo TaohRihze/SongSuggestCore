@@ -22,6 +22,17 @@ namespace FileHandling
         public SongSuggest songSuggest { get; set; }
         public FilePathSettings filePathSettings { get; set; }
 
+        public void CreatePaths()
+        {
+            if (filePathSettings == null) throw new Exception("No FilePathSettings given");
+            foreach (var pathString in filePathSettings.GetAllPaths())
+            {
+                if (!Directory.Exists(pathString))
+                {
+                    Directory.CreateDirectory(pathString);
+                }
+            }
+        }
         //Loads the primary song library from disc
         public List<Song> LoadSongLibrary()
         {
@@ -78,6 +89,18 @@ namespace FileHandling
         public void SaveScoreCollection(ScoreCollection playerScores, string filename)
         {
             File.WriteAllText(filePathSettings.activePlayerDataPath + $"{filename}.json", JsonConvert.SerializeObject(playerScores));
+        }
+
+        //Load Old Format of Local Scores
+        public List<PlayerScore> LoadOldLocalScores()
+        {
+            String loadedString = File.ReadAllText(filePathSettings.activePlayerDataPath + "Local Scores.json");
+            return JsonConvert.DeserializeObject<List<PlayerScore>>(loadedString, serializerSettings);
+        }
+
+        public void RemoveOldLocalScores()
+        {
+            File.Delete(filePathSettings.activePlayerDataPath + "Local Scores.json");
         }
 
         public List<Top10kPlayer> LoadScoreBoard(string scoreBoardName)

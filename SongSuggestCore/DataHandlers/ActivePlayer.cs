@@ -31,6 +31,8 @@ namespace ActivePlayerData
         //Loads all the cached data on the active player, and clears any that is outdated.
         public void Load()
         {
+            if (PlayerID == "-1") return;
+
             //Load the data on the PlayerID related to this object.
             foreach (IPlayerScores playerScores in scores.Values)
             {

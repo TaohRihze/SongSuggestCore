@@ -136,9 +136,17 @@ namespace Actions
             {
                 songSuggest = this.songSuggest,
                 //For now local scores require it is ScoreSaber data
-                scoreLocation = (useLocalScores && scoreLocation == ScoreLocation.ScoreSaber) ? ScoreLocation.LocalScores : scoreLocation,
+                //scoreLocation = (useLocalScores && scoreLocation == ScoreLocation.ScoreSaber) ? ScoreLocation.LocalScores : scoreLocation,
                 leaderboardType = leaderboard
             };
+
+            //Update player scores to only use local scores if enabled.
+            var currentActiveScoreLocations = songSuggest.activePlayer.ActiveScoreLocations;
+            if (useLocalScores)
+            {
+                songSuggest.activePlayer.ActiveScoreLocations.Clear();
+                songSuggest.activePlayer.ActiveScoreLocations.Add(ScoreLocation.LocalScores);
+            }
 
             songSuggest.log?.WriteLine("Starting Song Suggest");
 
@@ -185,6 +193,10 @@ namespace Actions
             timer.Reset();
             songSuggest.log?.WriteLine($"Time Spent: {timer.ElapsedMilliseconds}ms");
             songSuggest.log?.WriteLine(TimeTaken);
+
+            //Restore ActiveScoreLocations if changed to local
+            songSuggest.activePlayer.ActiveScoreLocations = currentActiveScoreLocations;
+
         }
 
         //public void Recalculate()

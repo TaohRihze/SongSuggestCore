@@ -16,6 +16,7 @@ using ScoreSabersJson;
 using Curve;
 using System.Runtime.CompilerServices;
 using System.Drawing;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace SongSuggestNS
 {
@@ -70,6 +71,8 @@ namespace SongSuggestNS
             log?.WriteLine("Log Enabled in Constructor");
 
             fileHandler = new FileHandler { songSuggest = this, filePathSettings = CoreSettings.FilePathSettings };
+            //Create any missing paths
+            fileHandler.CreatePaths();
 
             webDownloader = new WebDownloader { songSuggest = this };
 
@@ -117,7 +120,9 @@ namespace SongSuggestNS
             status = "Preparing Players Song History";
             //Creates an empty active player object
             activePlayer = new ActivePlayer(activePlayerID, this);
-            activePlayer.Load();
+            //Load player if assigned
+            if (activePlayerID != "-1") activePlayer.Load();
+            //update the assigned playerID
             RefreshActivePlayer();
 
 
@@ -261,6 +266,11 @@ namespace SongSuggestNS
                 activePlayer = new ActivePlayer(activePlayerID, this);
                 activePlayer.Load();
             }
+
+            //Check if there is a localCache file without player ID, and if add the data to the current active players data.
+            if (File.Exists(fileHandler.filePathSettings.activePlayerDataPath + $"Local Scores.json")) 
+                ((LocalPlayerScoreManager)activePlayer.GetScoreLocation(ScoreLocation.LocalScores)).ImportOldLocalScores();
+
             SetActiveLocations();
             log?.WriteLine($"Refreshing player: {activePlayerID}");
             activePlayer.Refresh();

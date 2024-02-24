@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace Settings
@@ -44,6 +45,25 @@ namespace Settings
             var path = Path.Combine(BasePath, extra);
             path = path.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
             return path;
+        }
+
+        public List<string> GetAllPaths()
+        {
+
+            List<string> paths = new List<string>();
+
+            paths.Add(BasePath);
+            paths.Add(songLibraryPath);
+            paths.Add(playlistPath);
+            paths.Add(activePlayerDataPath);
+            paths.Add(top10kPlayersPath);
+            paths.Add(bannedSongsPath);
+            paths.Add(likedSongsPath);
+            paths.Add(filesDataPath);
+            paths.Add(lastSuggestionsPath);
+            paths.Add(rankedData);
+
+            return paths;
         }
     }
 }
