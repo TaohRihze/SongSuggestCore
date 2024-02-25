@@ -519,9 +519,7 @@ namespace Actions
             //Filter out ignoreSongs before making the playlist.
             //Get the ignore lists ready (permaban, ban, and improved within X days, not improveable by X ranks)
             songSuggest.status = "Preparing Ignore List";
-            UpdateTimeTaken("Before IgnoreList Creation");
             List<SongID> ignoreSongs = CreateIgnoreLists(ignorePlayedAll ? -1 : ignorePlayedDays);
-            UpdateTimeTaken("After IgnoreList Creation");
             filteredSuggestions = sortedSuggestions
                 .Except(ignoreSongs)
                 .ToList();

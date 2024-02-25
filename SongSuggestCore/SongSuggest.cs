@@ -177,6 +177,7 @@ namespace SongSuggestNS
             try
             {
                 //Perform ScoreSaber Updates if active
+                //Performs all GIT updates including Song Library, so disabling this will also disable those checks.
                 if (CoreSettings.UpdateScoreSaberLeaderboard)
                 {
                     UpdateScoreSaberCacheFiles();
@@ -368,9 +369,6 @@ namespace SongSuggestNS
             //Note song library is downloaded, so its Songs updated is the correct time version of what is in it.
             cacheFilesWebVersion.beatLeaderLeaderboardUpdated = diskVersion.beatLeaderLeaderboardUpdated;
 
-            log?.WriteLine($"Version Current: {diskVersion.top10kVersion} Timestamp: {diskVersion.top10kUpdated}");
-            log?.WriteLine($"Version Web:     {cacheFilesWebVersion.top10kVersion} Timestamp: {cacheFilesWebVersion.top10kUpdated}");
-
             //Perform checks if anything needs updating
             //PlayerCache needs update, if the format has changed, or there is a new major update of the 10k data.
             bool formatChange = fileFormatDiskVersion.activePlayerVersion != fileFormatExpectedVersion.activePlayerVersion;
@@ -388,6 +386,7 @@ namespace SongSuggestNS
             log?.WriteLine($"Song Content - Disk: {diskVersion.Major(FilesMetaType.SongLibraryVersion)} Web: {cacheFilesWebVersion.Major(FilesMetaType.SongLibraryVersion)} {contentChange} Changed: {contentChange} ");
             if (formatChange || contentChange)
             {
+                log?.WriteLine("Starting Download of Song Library");
                 List<Song> songs = webDownloader.GetSongLibrary();
                 fileHandler.SaveSongLibrary(songs);
 
@@ -399,14 +398,18 @@ namespace SongSuggestNS
             //New top10k data needs to be downloaded in case of any change to content.
             formatChange = fileFormatDiskVersion.top10kVersion != fileFormatExpectedVersion.top10kVersion;
             contentChange = diskVersion.top10kVersion != cacheFilesWebVersion.top10kVersion;
+
+            log?.WriteLine($"ScoreSaber Player Data File Version:  {fileFormatDiskVersion.top10kVersion} Expected: {fileFormatExpectedVersion.top10kVersion}");
+            log?.WriteLine($"Scoresaber Player Data Cache Version: {diskVersion.top10kVersion}({diskVersion.top10kUpdated}) Web: {cacheFilesWebVersion.top10kVersion}(Timestamp: {cacheFilesWebVersion.top10kUpdated})");
             if (formatChange || contentChange)
             {
+                log?.WriteLine("Starting Download of ScoreSaber Player Data");
                 List<Top10kPlayer> top10kPlayerData = webDownloader.GetTop10kPlayers();
                 fileHandler.SaveScoreBoard(top10kPlayerData, "Top10KPlayers");
                 //top10kPlayers.Load();
 
                 filesUpdated = true;
-                log?.WriteLine("Downloaded and Updated top10k data");
+                log?.WriteLine("Downloaded and Updated ScoreSaber Player data");
             }
 
             //Save the new local data version if any updates has been completed. If anything fails next restart should attempt full update again.

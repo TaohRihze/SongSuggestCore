@@ -101,6 +101,12 @@ namespace ActivePlayerData
             return ActiveScoreLocations.Any(location => scores[location].Contains(songID));
         }
 
+        //Checks if the SongID is present in specified ScoreLocations
+        public bool Contains(SongID songID, ScoreLocation location)
+        {
+            return scores[location].Contains(songID);
+        }
+
         //Return highest Accuracy of any location
         public double GetAccuracy(SongID songID)
         {
@@ -130,7 +136,7 @@ namespace ActivePlayerData
         public int GetWorldRank(SongID songID, ScoreLocation scoreLocation)
         {
             var score = scores[scoreLocation].GetScore(songID);
-            if (score == null) return int.MaxValue;
+            if (score == null) return int.MaxValue; //No Score ... we either return a logic "worst" value or -1 signaling not found. Worst Value if not handled likely is more correct.
             return score.SourceRank;
         }
 

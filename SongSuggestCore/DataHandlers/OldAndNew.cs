@@ -348,9 +348,7 @@ namespace Actions
         {
             //Order all selected songs by their star rating.
             var sortedScores = selectedSongs
-                .Select(songID => SongLibrary.SongIDToSong(songID))
-                .OrderByDescending(song => song.starScoreSaber)
-                .Select(song => (SongID)(InternalID)song.internalID)
+                .OrderByDescending(songID => songID.GetSong().starScoreSaber)
                 .ToList();
 
             return sortedScores;
@@ -361,9 +359,7 @@ namespace Actions
         {
             //Order all selected songs by their star rating.
             var sortedScores = selectedSongs
-                .Select(songID => SongLibrary.SongIDToSong(songID))
-                .OrderByDescending(song => song.complexityAccSaber)
-                .Select(song => (SongID)(InternalID)song.internalID)
+                .OrderByDescending(songID => songID.GetSong().complexityAccSaber)
                 .ToList();
 
             return sortedScores;
@@ -372,37 +368,17 @@ namespace Actions
         //Sort the selection by worldPercentage
         private List<SongID> WorldPercentage(List<SongID> selectedSongs)
         {
-            //Lets find set scores and order them
-            var setScores = selectedSongs
-                .Where(songID => songSuggest.activePlayer.Contains(songID))
-                .OrderBy(songID => songSuggest.activePlayer.GetWorldRank(songID, ScoreLocation.ScoreSaber))
+            return selectedSongs
+                .OrderBy(songID => songSuggest.activePlayer.GetWorldPercentile(songID, ScoreLocation.ScoreSaber))
                 .ToList();
-
-            //Any non found scores (unplayed if added) are found here
-            var unplayedSongs = selectedSongs
-                .Except(setScores)
-                .ToList();
-
-            //Unknown scores are treated as oldest, and returned along with set scores
-            return setScores.Union(unplayedSongs).ToList();
         }
 
         //Sort the selection by World Rank
         private List<SongID> WorldRank(List<SongID> selectedSongs)
         {
-            //Lets find set scores and order them
-            var setScores = selectedSongs
-                .Where(songID => songSuggest.activePlayer.Contains(songID))
-                .OrderBy(songID => songSuggest.activePlayer.GetWorldPercentile(songID, ScoreLocation.ScoreSaber))
+            return selectedSongs
+                .OrderBy(songID => songSuggest.activePlayer.GetWorldRank(songID, ScoreLocation.ScoreSaber))
                 .ToList();
-
-            //Any non found scores (unplayed if added) are found here
-            var unplayedSongs = selectedSongs
-                .Except(setScores)
-                .ToList();
-
-            //Unknown scores are treated as oldest, and returned along with set scores
-            return setScores.Union(unplayedSongs).ToList();
         }
 
         //Sort the selection Random

@@ -13,6 +13,7 @@ using ActivePlayerData;
 using Actions;
 using Curve;
 using System.IO;
+using System.Collections;
 
 namespace PlayerScores
 {
@@ -28,17 +29,19 @@ namespace PlayerScores
         public void Load()
         {
             scoreCollection = songSuggest.fileHandler.LoadScoreCollection($"SS{ActivePlayer.PlayerID}");
+            ClearSongIDCache();
         }
 
         public void Save()
         {
             songSuggest.log?.WriteLine($"Saving Score Saber Scores");
             songSuggest.fileHandler.SaveScoreCollection(scoreCollection, $"SS{ActivePlayer.PlayerID}");
+            Updated = false;
         }
 
         public void Refresh()
         {
-            //Reset cached scores if there has been an update to ranked songs
+            //Reset cached scores if there has been an update to ranked songs (New star rating/new ranked songs)
             ClearIfOutdated();
 
             ////If there are no stored scores, we set timestamp to 0, meaning we will get all, else we grab newest recorded score and grab scores after.
@@ -101,6 +104,7 @@ namespace PlayerScores
                     playerScore.Accuracy = (double)record.score.baseScore / record.leaderboard.maxScore;
                     playerScore.SourcePlays = record.leaderboard.plays;
                     playerScore.SourceRank = record.score.rank;
+                    Updated = true;
                 }
 
                 //Update status
@@ -111,7 +115,11 @@ namespace PlayerScores
             }
 
             //Update completed without errors, so we save the updated local cache.
-            Save();
+            if (Updated)
+            {
+                ClearSongIDCache();
+                Save();
+            }
         }
 
         public void Clear()
@@ -151,31 +159,40 @@ namespace PlayerScores
 
         public DateTime GetTimeSet(SongID songID)
         {
-            var score = playerScores.Where(c => c.SongID == songID.GetSong().internalID)
-                .OrderByDescending(c => c.TimeSet)
-                .Select(c => c.TimeSet);
+            var score = GetPlayerScore(songID);
+            if (score == null) return DateTime.MinValue;
+            return score.TimeSet;
+            //var score = playerScores.Where(c => c.SongID == songID.GetSong().internalID)
+            //    .OrderByDescending(c => c.TimeSet)
+            //    .Select(c => c.TimeSet);
 
-            if (score.Count() == 0) return DateTime.MinValue;
-            return score.First();
+            //if (score.Count() == 0) return DateTime.MinValue;
+            //return score.First();
         }
 
         public double GetAccuracy(SongID songID)
         {
-            var score = playerScores.Where(c => c.SongID == songID.GetSong().internalID)
-                .OrderByDescending(c => c.Accuracy)
-                .Select(c => c.Accuracy);
+            var score = GetPlayerScore(songID);
+            if (score == null) return 0;
+            return score.Accuracy;
 
-            if (score.Count() == 0) return 0;
-            return score.First();
+            //var score = playerScores.Where(c => c.SongID == songID.GetSong().internalID)
+            //    .OrderByDescending(c => c.Accuracy)
+            //    .Select(c => c.Accuracy);
+
+            //if (score.Count() == 0) return 0;
+            //return score.First();
         }
 
         public double GetRatedScore(SongID songID, LeaderboardType leaderboardType)
         {
             var song = songID.GetSong();
 
-            PlayerScore score = playerScores.Where(c => c.SongID == song.internalID)
-                .OrderByDescending(c => c.Accuracy)
-                .FirstOrDefault();
+            //PlayerScore score = playerScores.Where(c => c.SongID == song.internalID)
+            //    .OrderByDescending(c => c.Accuracy)
+            //    .FirstOrDefault();
+
+            var score = GetPlayerScore(songID);
 
             if (score == null) return 0;
 
@@ -194,13 +211,15 @@ namespace PlayerScores
 
         public PlayerScore GetScore(SongID songID)
         {
-            var song = songID.GetSong();
+            return GetPlayerScore(songID);
 
-            PlayerScore score = playerScores.Where(c => c.SongID == song.internalID)
-                .OrderByDescending(c => c.Accuracy)
-                .FirstOrDefault();
+            //var song = songID.GetSong();
 
-            return score;
+            //PlayerScore score = playerScores.Where(c => c.SongID == song.internalID)
+            //    .OrderByDescending(c => c.Accuracy)
+            //    .FirstOrDefault();
+
+            //return score;
         }
 
         public bool Contains(SongID songID)
@@ -209,29 +228,30 @@ namespace PlayerScores
             return playerScores.Select(c => c.SongID).Contains(internalID);
         }
 
+        //Handling of cached PlayerScores via SongID
+        private Dictionary<SongID, PlayerScore> _songIDToScore = new Dictionary<SongID, PlayerScore>();
+
+        private PlayerScore GetPlayerScore(SongID songID)
+        {
+            if (_songIDToScore == null)
+            {
+                _songIDToScore = playerScores.ToDictionary(c => (SongID)(InternalID)c.SongID, c => c);
+            }
+
+            _songIDToScore.TryGetValue(songID, out var score);
+            return score;
+        }
+
+        //We received new scores, so we reset the cache
+        private void ClearSongIDCache()
+        {
+            _songIDToScore = null;
+        }
+
         public void ShowCache(TextWriter log)
         {
 
             log?.WriteLine($"ScoreSaber Score Count: {playerScores.Count()}");
         }
-
-        //Dictionary<SongID, int> _cachedRank = new Dictionary<SongID, int>();
-
-        //public int GetRank(SongID songID)
-        //{
-        //    //Create new cache if not already created
-        //    if (_cachedRank.Count() == 0)
-        //    {
-        //        var songIDs = GetScoreIDs().OrderByDescending(c => GetAccuracy(c)).ToList();
-        //        int rank = 1;
-        //        foreach (var cachedSongID in songIDs)
-        //        {
-        //            _cachedRank.Add(cachedSongID, rank);
-        //            rank++;
-        //        }
-        //    }
-
-        //    return _cachedRank.TryGetValue(songID, out var value) ? value : -1;
-        //}
     }
 }

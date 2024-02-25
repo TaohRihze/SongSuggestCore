@@ -21,13 +21,14 @@ namespace PlayerScores
         public SongSuggest songSuggest => ActivePlayer.songSuggest;
         private ScoreCollection scoreCollection = new ScoreCollection();
         private List<PlayerScore> playerScores => scoreCollection.PlayerScores;
-
+        public bool Updated { get; set; }
         public void Load()
         {
             scoreCollection = songSuggest.fileHandler.LoadScoreCollection($"BL{ActivePlayer.PlayerID}");
             songSuggest.log?.WriteLine();
 
             songSuggest.log?.WriteLine($"BL Cache Scores Loaded: ScoresMeta.FormatVersion({scoreCollection.ScoresMeta.FormatVersion})  ScoresMeta.DataVersion({scoreCollection.ScoresMeta.DataVersion})");
+            ClearSongIDCache();
         }
 
         public void Save()
@@ -104,12 +105,17 @@ namespace PlayerScores
                         };
                         playerScores.Add(newScore);
                     }
+                    Updated = true;
                 }
 
                 songSuggest.log?.WriteLine($"BeatLeader Completed Pages: {loadedPages}/{(records - 1) / scoresPerPage + 1}");
                 songSuggest.status = $"BeatLeader Completed Pages: {loadedPages}/{(records - 1) / scoresPerPage + 1}";
             }
-            Save();
+            if (Updated)
+            {
+                Save();
+                ClearSongIDCache();
+            }
             songSuggest.log?.WriteLine($"BL Scores: {playerScores.Count()}");
         }
 
@@ -149,6 +155,10 @@ namespace PlayerScores
 
         public DateTime GetTimeSet(SongID songID)
         {
+            //var score = GetPlayerScore(songID);
+            //if (score == null) return DateTime.MinValue;
+            //return score.TimeSet;
+
             var score = playerScores.Where(c => c.SongID == songID.GetSong().internalID)
                 .OrderByDescending(c => c.TimeSet)
                 .Select(c => c.TimeSet);
@@ -159,21 +169,26 @@ namespace PlayerScores
 
         public double GetAccuracy(SongID songID)
         {
-            var score = playerScores.Where(c => c.SongID == songID.GetSong().internalID)
-                .OrderByDescending(c => c.Accuracy)
-                .Select(c => c.Accuracy);
+            var score = GetPlayerScore(songID);
+            if (score == null) return 0;
+            return score.Accuracy;
 
-            if (score.Count() == 0) return 0;
-            return score.First();
+            //var score = playerScores.Where(c => c.SongID == songID.GetSong().internalID)
+            //    .OrderByDescending(c => c.Accuracy)
+            //    .Select(c => c.Accuracy);
+
+            //if (score.Count() == 0) return 0;
+            //return score.First();
         }
 
         public double GetRatedScore(SongID songID, LeaderboardType leaderboardType)
         {
             var song = songID.GetSong();
+            var score = GetPlayerScore(songID);
 
-            PlayerScore score = playerScores.Where(c => c.SongID == song.internalID)
-                .OrderByDescending(c => c.Accuracy)
-                .FirstOrDefault();
+            //PlayerScore score = playerScores.Where(c => c.SongID == song.internalID)
+            //    .OrderByDescending(c => c.Accuracy)
+            //    .FirstOrDefault();
 
             if (score == null) return 0;
 
@@ -192,13 +207,14 @@ namespace PlayerScores
 
         public PlayerScore GetScore(SongID songID)
         {
-            var song = songID.GetSong();
+            return GetPlayerScore(songID);
+            //var song = songID.GetSong();
 
-            PlayerScore score = playerScores.Where(c => c.SongID == song.internalID)
-                .OrderByDescending(c => c.Accuracy)
-                .FirstOrDefault();
+            //PlayerScore score = playerScores.Where(c => c.SongID == song.internalID)
+            //    .OrderByDescending(c => c.Accuracy)
+            //    .FirstOrDefault();
 
-            return score;
+            //return score;
         }
 
         public bool Contains(SongID songID)
@@ -207,9 +223,29 @@ namespace PlayerScores
             return playerScores.Select(c => c.SongID).Contains(internalID);
         }
 
+        //Handling of cached PlayerScores via SongID
+        private Dictionary<SongID, PlayerScore> _songIDToScore = new Dictionary<SongID, PlayerScore>();
+
+        private PlayerScore GetPlayerScore(SongID songID)
+        {
+            if (_songIDToScore == null)
+            {
+                _songIDToScore = playerScores.ToDictionary(c => (SongID)(InternalID)c.SongID, c => c);
+            }
+
+            _songIDToScore.TryGetValue(songID, out var score);
+            return score;
+        }
+
+        //We received new scores, so we reset the cache
+        private void ClearSongIDCache()
+        {
+            _songIDToScore = null;
+        }
+
         public void ShowCache(TextWriter log)
         {
-            
+
             log?.WriteLine($"BeatLeader Score Count: {playerScores.Count()}");
         }
     }

@@ -25,45 +25,45 @@ namespace LinkedData
             return strength;
         }
 
-        //Calculates the distance
-        public double Distance(SongSuggest songSuggest)
-        {
-            if (unsetDistance)
-            {
-                //Calcualte distance.
-                //Get the 3 song scores (ActivePlayers, SuggestionOrigin, and SuggestionTarget)
-                String originID = originSongScore.songID;
-                String targetID = targetSongScore.songID;
-                double originMaxPP = GetMaxPP(songSuggest, originID);
-                double targetMaxPP = GetMaxPP(songSuggest, targetID);
+        ////Calculates the distance
+        //public double Distance(SongSuggest songSuggest)
+        //{
+        //    if (unsetDistance)
+        //    {
+        //        //Calcualte distance.
+        //        //Get the 3 song scores (ActivePlayers, SuggestionOrigin, and SuggestionTarget)
+        //        String originID = originSongScore.songID;
+        //        String targetID = targetSongScore.songID;
+        //        double originMaxPP = GetMaxPP(songSuggest, originID);
+        //        double targetMaxPP = GetMaxPP(songSuggest, targetID);
                 
-                //Split the 3 scores in PP/Acc and Acc
-                Split(out double activePlayerAcc, out double activePlayerPPAcc, songSuggest.activePlayer.GetRatedScore((ScoreSaberID)originID, Actions.LeaderboardType.ScoreSaber), originMaxPP);
-                Split(out double originPlayerAcc, out double originPlayerPPAcc, originSongScore.pp, originMaxPP);
-                Split(out double targetPlayerAcc, out double targetPlayerPPAcc, targetSongScore.pp, targetMaxPP);
+        //        //Split the 3 scores in PP/Acc and Acc
+        //        Split(out double activePlayerAcc, out double activePlayerPPAcc, songSuggest.activePlayer.GetRatedScore((ScoreSaberID)originID, Actions.LeaderboardType.ScoreSaber), originMaxPP);
+        //        Split(out double originPlayerAcc, out double originPlayerPPAcc, originSongScore.pp, originMaxPP);
+        //        Split(out double targetPlayerAcc, out double targetPlayerPPAcc, targetSongScore.pp, targetMaxPP);
 
-                //Reset the distance to 1,1 for ActivePlayers score
+        //        //Reset the distance to 1,1 for ActivePlayers score
                 
-                double distancePPAcc = (targetPlayerPPAcc - originPlayerPPAcc)/activePlayerPPAcc;
-                double distanceAcc = (targetPlayerAcc - originPlayerAcc)/activePlayerAcc;
+        //        double distancePPAcc = (targetPlayerPPAcc - originPlayerPPAcc)/activePlayerPPAcc;
+        //        double distanceAcc = (targetPlayerAcc - originPlayerAcc)/activePlayerAcc;
 
-                //Calculate the distance between the SuggestionOrigin and SuggestionTarget via Pythagoros A^2+B^2=C^2
-                distance = Math.Sqrt(distancePPAcc*distancePPAcc + distanceAcc*distanceAcc);
-                unsetDistance = false;
-            }
-            return distance;
-        }
+        //        //Calculate the distance between the SuggestionOrigin and SuggestionTarget via Pythagoros A^2+B^2=C^2
+        //        distance = Math.Sqrt(distancePPAcc*distancePPAcc + distanceAcc*distanceAcc);
+        //        unsetDistance = false;
+        //    }
+        //    return distance;
+        //}
 
-        //Splits a PP score into an Acc and a PP per Acc component, using the maxPP value known in the Top10kPlayers data
-        private void Split(out double acc, out double ppAcc, double pp, double maxPP)
-        {
-            acc = maxPP / pp;
-            ppAcc = pp / acc;
-        }
+        ////Splits a PP score into an Acc and a PP per Acc component, using the maxPP value known in the Top10kPlayers data
+        //private void Split(out double acc, out double ppAcc, double pp, double maxPP)
+        //{
+        //    acc = maxPP / pp;
+        //    ppAcc = pp / acc;
+        //}
 
-        private double GetMaxPP(SongSuggest songSuggest, String songID)
-        {
-            return songSuggest.songSuggest.Leaderboard().top10kSongMeta[songID].maxScore;
-        }
+        //private double GetMaxPP(SongSuggest songSuggest, String songID)
+        //{
+        //    return songSuggest.songSuggest.Leaderboard().top10kSongMeta[songID].maxScore;
+        //}
     }
 }

@@ -29,13 +29,13 @@ namespace SongLibraryNS
         public string difficulty { get; set; }
         public string characteristic { get; set; } = "Standard"; //Default might be removed later once all data is updated, for now updating on first load is fine.
         public SongCategory songCategory { get; set; }
-        public double starScoreSaber
-        {
-            get => starBeatSaber;
-            set => starBeatSaber = value;
-        }
-        [Obsolete("Use starScoreSaber instead")]
-        public double starBeatSaber { get; set; }
+        public double starScoreSaber { get; set; }
+        //{
+        //    get => starBeatSaber;
+        //    set => starBeatSaber = value;
+        //}
+        //[Obsolete("Use starScoreSaber instead")]
+        //public double starBeatSaber { get; set; }
         public double starBeatLeader { get; set; }
         public double complexityAccSaber { get; set; }
 
