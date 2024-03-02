@@ -98,6 +98,9 @@ namespace PlayerScores
                         break;
                     }
 
+                    //Reuploaded songs may be missing maxScore, this is only relevant for ranked versions, so this workaround to assign known missing scores
+                    if (record.leaderboard.maxScore == 0) record.leaderboard.maxScore = ManualData.SongMaxScore($"{record.leaderboard.id}");
+
                     //Update records data
                     playerScore.TimeSet = record.score.timeSet;
                     playerScore.RatedScore = record.score.pp;
@@ -162,12 +165,6 @@ namespace PlayerScores
             var score = GetPlayerScore(songID);
             if (score == null) return DateTime.MinValue;
             return score.TimeSet;
-            //var score = playerScores.Where(c => c.SongID == songID.GetSong().internalID)
-            //    .OrderByDescending(c => c.TimeSet)
-            //    .Select(c => c.TimeSet);
-
-            //if (score.Count() == 0) return DateTime.MinValue;
-            //return score.First();
         }
 
         public double GetAccuracy(SongID songID)
@@ -175,22 +172,11 @@ namespace PlayerScores
             var score = GetPlayerScore(songID);
             if (score == null) return 0;
             return score.Accuracy;
-
-            //var score = playerScores.Where(c => c.SongID == songID.GetSong().internalID)
-            //    .OrderByDescending(c => c.Accuracy)
-            //    .Select(c => c.Accuracy);
-
-            //if (score.Count() == 0) return 0;
-            //return score.First();
         }
 
         public double GetRatedScore(SongID songID, LeaderboardType leaderboardType)
         {
             var song = songID.GetSong();
-
-            //PlayerScore score = playerScores.Where(c => c.SongID == song.internalID)
-            //    .OrderByDescending(c => c.Accuracy)
-            //    .FirstOrDefault();
 
             var score = GetPlayerScore(songID);
 
@@ -212,14 +198,6 @@ namespace PlayerScores
         public PlayerScore GetScore(SongID songID)
         {
             return GetPlayerScore(songID);
-
-            //var song = songID.GetSong();
-
-            //PlayerScore score = playerScores.Where(c => c.SongID == song.internalID)
-            //    .OrderByDescending(c => c.Accuracy)
-            //    .FirstOrDefault();
-
-            //return score;
         }
 
         public bool Contains(SongID songID)

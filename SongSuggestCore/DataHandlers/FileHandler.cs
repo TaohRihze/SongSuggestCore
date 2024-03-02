@@ -50,21 +50,29 @@ namespace FileHandling
         //Save a Playlist to a bplist (json format)
         public void SavePlaylist(String playlistString, String fileName)
         {
-            File.WriteAllText(filePathSettings.playlistPath + fileName + ".bplist", playlistString);
+            File.WriteAllText(filePathSettings.playlistPath + fileName, playlistString);
         }
 
-        //Load a bplist playlist (json format)
+        //Load a bplist playlist (json format), must include file extension. Path is from the Playlist Library location. (combined Folder\filename.extension)
         public Playlist LoadPlaylist(String fileName)
         {
-            if (!File.Exists(filePathSettings.playlistPath + fileName + ".bplist")) SavePlaylist(new Playlist(), fileName);
-            String playlistString = File.ReadAllText(filePathSettings.playlistPath + fileName + ".bplist");
+            string fullPath = Path.Combine(filePathSettings.playlistPath, fileName);
+            if (!File.Exists(fullPath)) SavePlaylist(new Playlist(), fileName);
+            String playlistString = File.ReadAllText(fullPath);
             return JsonConvert.DeserializeObject<Playlist>(playlistString, serializerSettings);
         }
 
         //save Playlist json
         public void SavePlaylist(Playlist playlist, String fileName)
         {
-            File.WriteAllText(filePathSettings.playlistPath + fileName + ".bplist", JsonConvert.SerializeObject(playlist, serializerSettings));
+            string fullPath = Path.Combine(filePathSettings.playlistPath, fileName);
+
+            string directoryPath = Path.GetDirectoryName(fullPath);
+            if (!Directory.Exists(directoryPath))
+            {
+                Directory.CreateDirectory(directoryPath);
+            }
+            File.WriteAllText(fullPath, JsonConvert.SerializeObject(playlist, serializerSettings));
         }
 
         //Load Players Cached Scores

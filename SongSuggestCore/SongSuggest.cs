@@ -17,11 +17,14 @@ using Curve;
 using System.Runtime.CompilerServices;
 using System.Drawing;
 using System.Runtime.InteropServices.ComTypes;
+using PlaylistNS;
 
 namespace SongSuggestNS
 {
     public class SongSuggest
     {
+        public double songSuggestCompletion { get => songSuggest?.songSuggestCompletion ?? 1; }
+        public static SongSuggest MainInstance { get; set; }
         public static TextWriter Log { get; set; }
         public String status { get; set; } = "Uninitialized";
         public ActivePlayer activePlayer { get; set; }
@@ -51,14 +54,15 @@ namespace SongSuggestNS
         public Boolean lowQualitySuggestions { get; set; } = false;
 
         //Log Details Target (null means it is off), else set the writer here.
-        public TextWriter log = null;
+        public TextWriter log => Log; //Been using non global log all over, just use global Log in rewrites.
 
         internal CoreSettings CoreSettings { get; }
 
-        //Configured how the program should be run.
+        //Configured how the program should be run. Assigns first created as main.
         public SongSuggest(CoreSettings coreSettings)
         {
             CoreSettings = coreSettings;
+            if (SongSuggest.MainInstance == null) SongSuggest.MainInstance = this;
             Initialize();
         }
 
@@ -66,8 +70,7 @@ namespace SongSuggestNS
         private void Initialize()
         {
             //Enable Log
-            this.log = CoreSettings.Log;
-            SongSuggest.Log = CoreSettings.Log;
+            Log = CoreSettings.Log;
             log?.WriteLine("Log Enabled in Constructor");
 
             fileHandler = new FileHandler { songSuggest = this, filePathSettings = CoreSettings.FilePathSettings };
@@ -269,7 +272,7 @@ namespace SongSuggestNS
             }
 
             //Check if there is a localCache file without player ID, and if add the data to the current active players data.
-            if (File.Exists(fileHandler.filePathSettings.activePlayerDataPath + $"Local Scores.json")) 
+            if (File.Exists(fileHandler.filePathSettings.activePlayerDataPath + $"Local Scores.json"))
                 ((LocalPlayerScoreManager)activePlayer.GetScoreLocation(ScoreLocation.LocalScores)).ImportOldLocalScores();
 
             SetActiveLocations();
@@ -308,7 +311,7 @@ namespace SongSuggestNS
 
             //Remove local again if added.
             if (!localScoresPresent) activePlayer.ActiveScoreLocations.Remove(ScoreLocation.LocalScores);
-            
+
             return AP == 0 ? "" : $"{AP:0.00}AP";
 
 
@@ -564,5 +567,64 @@ namespace SongSuggestNS
             beatLeaderScoreBoard.top10kSongMeta.Clear();
             beatLeaderScoreBoard.GenerateTop10kSongMeta();
         }
+
+        public bool ContainsSyncURL(string filename)
+        {
+            var playlist = fileHandler.LoadPlaylist(filename);
+            return true;
+        }
+
+
+        public void FilterSyncURL(PlaylistSyncURL SyncURL, PlaylistSettings playlistSettings)
+        {
+            status = "Dowloading Songs";
+            PlaylistManager playlistManager = new PlaylistManager(playlistSettings) { songSuggest = this };
+
+            log?.WriteLine($"Songs Before Loading URL: {playlistManager.GetSongs().Count}");
+
+            playlistManager.LoadSyncURL(SyncURL);
+            playlistManager.syncURL = SyncURL.SyncURL;
+
+            status = "Filtering Songs";
+
+            log?.WriteLine($"Songs Before Filtering: {playlistManager.GetSongs().Count}");
+
+            var bannedSongs = playlistManager.GetSongs()
+                .Where(c => songBanning.IsBanned(c))
+                .ToList();
+
+            foreach (var song in bannedSongs) playlistManager.RemoveSong(song);
+
+            log?.WriteLine($"Songs After Filtering: {playlistManager.GetSongs().Count}");
+
+            playlistManager.Generate();
+
+            status = "Ready";
+        }
+
+        public void FilterSyncURL(PlaylistPath loadPath, PlaylistPath savePath)
+        {
+            var playlistManager = new PlaylistManager(loadPath);
+            PlaylistSyncURL url = new PlaylistSyncURL() { SyncURL = playlistManager.syncURL };
+            status = "Dowloading Songs";
+            playlistManager.LoadSyncURL(url);
+
+            status = "Filtering Songs";
+            log?.WriteLine($"Songs Before Filtering: {playlistManager.GetSongs().Count}");
+
+            var bannedSongs = playlistManager.GetSongs()
+                .Where(c => songBanning.IsBanned(c))
+                .ToList();
+
+            foreach (var song in bannedSongs) playlistManager.RemoveSong(song);
+
+            log?.WriteLine($"Songs After Filtering: {playlistManager.GetSongs().Count}");
+
+            playlistManager.SetFilePath(savePath);
+            playlistManager.Generate();
+
+            status = "Ready";
+        }
+
     }
 }

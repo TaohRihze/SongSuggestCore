@@ -12,6 +12,7 @@ using SongLibraryNS;
 using LinkedData;
 using System.Text;
 using Settings;
+using PlaylistJson;
 
 namespace WebDownloading
 {
@@ -320,6 +321,21 @@ namespace WebDownloading
             string downloadString = client.DownloadString(webPath);
 
             return JsonConvert.DeserializeObject<List<Top10kPlayer>>(downloadString, serializerSettings);
+        }
+
+        internal Playlist LoadWebURL(string weblink)
+        {
+            try
+            {
+                //https://api.accsaber.com/ranked-maps
+                String songInfo = client.DownloadString(weblink);
+                return JsonConvert.DeserializeObject<Playlist>(songInfo, serializerSettings);
+            }
+            catch
+            {
+                songSuggest.log?.WriteLine("Error downloading given WebURL");
+            }
+            return new Playlist();
         }
     }
 

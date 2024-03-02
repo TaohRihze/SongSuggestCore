@@ -1,15 +1,16 @@
-﻿using Settings;
+﻿using PlaylistJson;
+using Settings;
+using SongLibraryNS;
 using SongSuggestNS;
-using PlaylistJson;
 using System;
 using System.Collections.Generic;
-using SongLibraryNS;
+using System.IO;
 
 namespace PlaylistNS
 {
     public partial class PlaylistManager
     {
-        public SongSuggest songSuggest { get; set; }
+        public SongSuggest songSuggest { get; set; } = SongSuggest.MainInstance;
         public String title { get; set; } = "Try This";
         public String author { get; set; } = "Song Suggest";
         public String image { get; set; } = "";//"data:image/png;base64,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";
@@ -20,57 +21,65 @@ namespace PlaylistNS
         //List of songID's on added songs
         public List<SongID> songIDs = new List<SongID>();
 
+        //Constructor via PlaylistSettings
         public PlaylistManager(PlaylistSettings playlistSettings)
         {
             if (playlistSettings.title != null) this.title = playlistSettings.title;
             if (playlistSettings.author != null) this.author = playlistSettings.author;
             if (playlistSettings.image != null) this.image = playlistSettings.image;
-            if (playlistSettings.fileName != null) this.fileName = playlistSettings.fileName;
+            if (playlistSettings.fileName != null) this.fileName = $"{playlistSettings.fileName}.bplist"; //Default all playlists to .bplist ... if you need json or other overwrite this after
             if (playlistSettings.description != null) this.description = playlistSettings.description;
             if (playlistSettings.syncURL != null) this.syncURL = playlistSettings.syncURL;
         }
 
-        ////Generates the playlist tekst for added songs.
-        //public void OldGenerate()
-        //{
-        //    String playlistText = "{";
-        //    playlistText += "\"AllowDuplicates\":false,";
-        //    playlistText += "\"playlistTitle\":\"" + title + "\",";
-        //    playlistText += "\"playlistAuthor\":\"" + author + "\",";
-        //    if (description != "") playlistText += "\"playlistDescription\":\"" + description + "\","; //Only add description if there is one
-        //    playlistText += "\"image\":\"" + image + "\",";
-        //    if (syncURL != "") playlistText += "\"syncURL\":\"" + syncURL + "\","; //Only add an URL if there is one
-        //    playlistText += "\"songs\":[";
-
-        //    foreach (String song in songs)
-        //    {
-        //        playlistText += GetSongString(song);
-        //    }
-
-        //    playlistText = playlistText.TrimEnd(',');
-        //    playlistText += "]}";
-        //    songSuggest.fileHandler.SavePlaylist(playlistText, fileName);
-        //}
-
-        public void Load(String playlistFileName)
+        //Constructor via FilePath
+        public PlaylistManager(PlaylistPath playlistPath)
         {
-            Playlist playlistJSON = songSuggest.fileHandler.LoadPlaylist(playlistFileName);
-            //**Missing** Insert code to load data to this structure.
+            SetFilePath(playlistPath);
+            LoadFile(fileName);
+        }
 
-            title = playlistJSON.playlistTitle;
-            author = playlistJSON.playlistAuthor;
-            image = playlistJSON.image;
-            description = playlistJSON.playlistDescription;
-            syncURL = playlistJSON.syncURL;
+        //Constructor via SyncURL
+        public PlaylistManager(PlaylistSyncURL syncURL)
+        {
+            LoadSyncURL(syncURL);
+            this.syncURL = syncURL.SyncURL;
+        }
+
+        //Set FilePath via a PlaylistPath
+        public void SetFilePath(PlaylistPath path)
+        {
+            path.Subfolders = path.Subfolders.Trim('\\');
+            path.FileExtension = path.FileExtension.Trim('.');
+            fileName = Path.Combine(path.Subfolders, $"{path.FileName}.{path.FileExtension}");
+        }
+
+        public void LoadFile(String playlistFileName)
+        {
+            SetPlayList(songSuggest.fileHandler.LoadPlaylist(playlistFileName));
+        }
+
+        public void LoadSyncURL(PlaylistSyncURL syncURL)
+        {
+            SetPlayList(songSuggest.webDownloader.LoadWebURL(syncURL.SyncURL));
+        }
+
+        public void SetPlayList(Playlist playlist)
+        {
+            title = playlist.playlistTitle;
+            author = playlist.playlistAuthor;
+            image = playlist.image;
+            description = playlist.playlistDescription;
+            syncURL = playlist.syncURL;
             songIDs.Clear();
 
-            foreach (var song in playlistJSON.songs)
+            foreach (var song in playlist.songs)
             {
                 foreach (var difficulty in song.difficulties)
                 {
                     if (difficulty.characteristic == "Standard")
                     {
-                        songIDs.Add(songSuggest.songLibrary.GetID(song.hash, difficulty.name));
+                        songIDs.Add(SongLibrary.GetID(song.hash, difficulty.name));
                     }
                 }
             }

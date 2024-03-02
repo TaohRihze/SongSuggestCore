@@ -47,6 +47,9 @@ namespace PlayerScores
             //We add the score to scoreCollection, and mark that we have updated our records.
             scoreCollection.PlayerScores.Add(score);
             updated = true;
+
+            //Must inform manager its data has been updated
+            ActivePlayer.CachedRankings.Clear();
         }
 
         //Lookup sorted scores, generated from load and added scores during the session, as this is based on scoreCollection, which is master additions to these do not modify updated.

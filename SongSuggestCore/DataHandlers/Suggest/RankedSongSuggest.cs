@@ -199,17 +199,6 @@ namespace Actions
 
         }
 
-        //public void Recalculate()
-        //{
-        //    timer.Reset();
-        //    timer.Start();
-        //    songSuggest.log?.WriteLine("Starting Recalculations");
-        //    EvaluateFilters();
-        //    RemoveIgnoredSongs();
-        //    CreatePlaylist();
-        //    songSuggest.log?.WriteLine($"Recalculations Done: {timer.ElapsedMilliseconds}ms");
-        //}
-
         //Creates the needed linked data for song evaluation for the Active Player.
         //Until Active Players top originSongsCount scores change *1 (replaced or better scores) no need to recalculate
         //*1 (Liked songs if active changes also counts as an update)
@@ -576,12 +565,13 @@ namespace Actions
             if (suggestSM.leaderboardType == LeaderboardType.ScoreSaber || suggestSM.leaderboardType == LeaderboardType.BeatLeader)
             {
                 //List<String> activePlayersPPSortedSongs = songSuggest.activePlayer.scores.Values.OrderByDescending(p => p.pp).ToList().Select(p => p.songID).ToList();
-                var activePlayersPPSortedSongs = suggestSM.PlayerScoresIDs().OrderByDescending(c => suggestSM.PlayerScoreValue(c)).Select(c => c.Value).ToList();
+                //var activePlayersPPSortedSongs = suggestSM.PlayerScoresIDs().OrderByDescending(c => suggestSM.PlayerScoreValue(c)).Select(c => c.Value).ToList();
 
                 int suggestedSongRank = 0;
                 foreach (SongID songID in sortedSuggestions)
                 {
-                    int currentSongRank = activePlayersPPSortedSongs.IndexOf(songID);
+                    int currentSongRank = suggestSM.GetRank(songID);
+                    //int currentSongRank = activePlayersPPSortedSongs.IndexOf(songID);
                     //Add songs ID to ignore list if current rank is not expected improveable by at least X spots, and it is not an unplayed song
                     if (currentSongRank < suggestedSongRank + improveSpots && currentSongRank != -1)
                     {

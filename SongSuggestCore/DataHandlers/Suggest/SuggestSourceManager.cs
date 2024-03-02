@@ -79,6 +79,11 @@ namespace Actions
             throw new InvalidOperationException($"Unknown CalculatedScore Source found: {leaderboardType}");
         }
 
+        internal int GetRank(SongID songID)
+        {
+            return songSuggest.activePlayer.GetLeaderboardRank(songID, leaderboardType);
+        }
+
         public Top10kPlayers Leaderboard()
         {
             switch (leaderboardType)
@@ -122,5 +127,6 @@ namespace Actions
             }
             throw new InvalidOperationException($"Unknown LeaderboardSongIDType Source found: {leaderboardType}");
         }
+
     }
 }

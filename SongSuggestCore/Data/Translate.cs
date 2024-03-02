@@ -17,6 +17,8 @@ namespace SongSuggestNS
             SongCategoryDictionary.Add($"{SongCategory.AccSaberTech}Hover", "AccSabers Tech Acc Leaderboard");
             SongCategoryDictionary.Add($"{SongCategory.BrokenDownloads}Label", "Broken Downloads");
             SongCategoryDictionary.Add($"{SongCategory.BrokenDownloads}Hover", "Songs that may break in download for various reasons. Turn on if you do not mind a Missing Download icon and/or have the songs already.");
+            SongCategoryDictionary.Add($"{SongCategory.BeatLeader}Label", "Beat Leader");
+            SongCategoryDictionary.Add($"{SongCategory.BeatLeader}Hover", "Ranked Beat Leader Songs");
         }
     }
 }

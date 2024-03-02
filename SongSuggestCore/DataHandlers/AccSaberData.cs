@@ -131,7 +131,7 @@ namespace AccSaberData
 
                 if (tmpSong.MaxScore == 0)
                 {
-                    tmpSong.MaxScore = ManualData.SongMaxScore(songID, songSuggest);
+                    tmpSong.MaxScore = ManualData.SongMaxScore(songID);
                 }
                 songs.Add(tmpSong);
                 currentSong++;

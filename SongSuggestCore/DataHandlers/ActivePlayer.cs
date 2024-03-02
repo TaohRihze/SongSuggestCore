@@ -4,7 +4,6 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using Actions;
-using Newtonsoft.Json;
 using PlayerScores;
 using SongLibraryNS;
 using SongSuggestNS;
@@ -23,9 +22,9 @@ namespace ActivePlayerData
         {
             PlayerID = playerID;
             this.songSuggest = songSuggest;
-            scores[ScoreLocation.ScoreSaber] = new ScoreSaberPlayerScoreManager() {ActivePlayer = this};
-            scores[ScoreLocation.BeatLeader] = new BeatLeaderPlayerScoreManager() {ActivePlayer = this};
-            scores[ScoreLocation.LocalScores] = new LocalPlayerScoreManager() {ActivePlayer = this};
+            scores[ScoreLocation.ScoreSaber] = new ScoreSaberPlayerScoreManager() { ActivePlayer = this };
+            scores[ScoreLocation.BeatLeader] = new BeatLeaderPlayerScoreManager() { ActivePlayer = this };
+            scores[ScoreLocation.LocalScores] = new LocalPlayerScoreManager() { ActivePlayer = this };
         }
 
         //Loads all the cached data on the active player, and clears any that is outdated.
@@ -39,6 +38,8 @@ namespace ActivePlayerData
                 playerScores.Load();
                 playerScores.ClearIfOutdated();
             }
+
+            CachedRankings.Clear();
         }
 
         //Saves all cached data.
@@ -53,19 +54,21 @@ namespace ActivePlayerData
         //Refresh the active ScoreLocations data
         public void Refresh()
         {
-            songSuggest.log?.WriteLine($"Starting Fresh of {ActiveScoreLocations.Count}");
+            songSuggest.log?.WriteLine($"Starting Refresh of {ActiveScoreLocations.Count}");
             foreach (var location in ActiveScoreLocations)
             {
                 songSuggest.log?.WriteLine($"Refreshing: {location}");
                 scores[location].Refresh();
                 songSuggest.log?.WriteLine($"Done refreshing: {location}");
             }
+
+            CachedRankings.Clear();
         }
 
         //All Song Categories (except the BrokenDownloads)
         private static SongCategory allCategories = (SongCategory)Enum.GetValues(typeof(SongCategory))
             .Cast<int>()
-            .Except(new [] { (int)SongCategory.BrokenDownloads })
+            .Except(new[] { (int)SongCategory.BrokenDownloads })
             .Sum();
 
         //Return all ranked songs within the active leaderboards
@@ -154,6 +157,59 @@ namespace ActivePlayerData
             var score = scores[scoreLocation].GetScore(songID);
             if (score == null) return -1; //Player has no scores, so we did not cache amount of plays. Let UI figure this out.
             return score.SourcePlays;
+        }
+
+        //Returns the ranking of all scores from a player for a given leaderboard.
+        public int GetLeaderboardRank(SongID songID, LeaderboardType leaderboard)
+        {
+            switch (leaderboard)
+            {
+                case LeaderboardType.ScoreSaber:
+                    return GetLeaderboardRank(songID, leaderboard, SongCategory.ScoreSaber);
+                case LeaderboardType.AccSaber:
+                    return GetLeaderboardRank(songID, leaderboard, SongCategory.AccSaberStandard | SongCategory.AccSaberTrue | SongCategory.AccSaberTech);
+                case LeaderboardType.BeatLeader:
+                    return GetLeaderboardRank(songID, leaderboard, SongCategory.BeatLeader);
+            }
+            //No known handling so rank is set to unknown (-1).
+            return -1;
+        }
+
+        public Dictionary<SongCategory, Dictionary<SongID, int>> CachedRankings = new Dictionary<SongCategory, Dictionary<SongID, int>>();
+        //Allows you to also specify only specific sub categories (Acc Saber and possible HitBloq if added)
+        //Each leaderboard uses only its attached source songs and session cache. (e.g. no BeatLeader scores for Acc Saber).
+        public int GetLeaderboardRank(SongID songID, LeaderboardType leaderboard, SongCategory categories)
+        {
+            //Check for cache, and if none create a new.
+            if (!CachedRankings.ContainsKey(categories))
+            {
+                //Get known songs from relevant locations
+                List<SongID> scoreIDs = new List<SongID>();
+                switch (leaderboard)
+                {
+                    case LeaderboardType.ScoreSaber:
+                    case LeaderboardType.AccSaber:
+                        scoreIDs = GetRankedLocationScoreIDs(ScoreLocation.ScoreSaber);
+                        break;
+                    case LeaderboardType.BeatLeader:
+                        scoreIDs = GetRankedLocationScoreIDs(ScoreLocation.BeatLeader);
+                        break;
+                }
+                //reduce song IDs to matching categories, and order by value
+                scoreIDs = scoreIDs
+                    .Where(c => SongLibrary.HasAnySongCategory(c, categories))  //Must be of the given categories
+                    .OrderByDescending(c => GetRatedScore(c, leaderboard))      //Order by rank
+                .ToList();
+
+                Dictionary<SongID, int> categoryDictionary = scoreIDs
+                    .Select((c, index) => new { Key = c, Value = index + 1 })
+                    .ToDictionary(item => item.Key, item => item.Value);
+
+                CachedRankings.Add(categories, categoryDictionary);
+            }
+
+            //Return cache lookup, if ID is not within the cache a rank of -1 is given, let UI decide handling of this.
+            return CachedRankings[categories].TryGetValue(songID, out var rank) ? rank : -1;
         }
 
         //Returns the related IPlayer of the Scorelocation.

@@ -11,7 +11,7 @@ namespace SongLibraryNS
         //These are calculated via their max notes
         //If need be a lookup for notecount might be added .
         //!!!Current workround will break when a note will not match 115 points (new note types).
-        public static int SongMaxScore(string songID, SongSuggest songSuggest)
+        public static int SongMaxScore(string songID)
         {
 
 
@@ -43,7 +43,7 @@ namespace SongLibraryNS
                 case "572414":
                     return SongMaxScore(630);
                 default:
-                    songSuggest.log?.WriteLine($"Song has no maxScore, nor known alternate: {songID}");
+                    SongSuggest.Log?.WriteLine($"Song has no maxScore, nor known alternate: {songID}");
                     return 0;
             }
         }
