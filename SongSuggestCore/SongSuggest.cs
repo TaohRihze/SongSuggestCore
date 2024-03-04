@@ -87,9 +87,9 @@ namespace SongSuggestNS
 
             //Load data from disk.
 
-            //Load Song Library from File and make it the global lookup
+            //Load Song Library from File and make it the global lookup if this is the primary instance
             songLibrary = new SongLibraryInstance { songSuggest = this };
-            songLibrary.SetActive();
+            if (SongSuggest.MainInstance == this) songLibrary.SetActive();
             songLibrary.SetLibrary(fileHandler.LoadSongLibrary());
 
             songLiking = new SongLiking
@@ -566,40 +566,6 @@ namespace SongSuggestNS
             //We save the leaderboard.
             beatLeaderScoreBoard.top10kSongMeta.Clear();
             beatLeaderScoreBoard.GenerateTop10kSongMeta();
-        }
-
-        public bool ContainsSyncURL(string filename)
-        {
-            var playlist = fileHandler.LoadPlaylist(filename);
-            return true;
-        }
-
-
-        public void FilterSyncURL(PlaylistSyncURL SyncURL, PlaylistSettings playlistSettings)
-        {
-            status = "Dowloading Songs";
-            PlaylistManager playlistManager = new PlaylistManager(playlistSettings) { songSuggest = this };
-
-            log?.WriteLine($"Songs Before Loading URL: {playlistManager.GetSongs().Count}");
-
-            playlistManager.LoadSyncURL(SyncURL);
-            playlistManager.syncURL = SyncURL.SyncURL;
-
-            status = "Filtering Songs";
-
-            log?.WriteLine($"Songs Before Filtering: {playlistManager.GetSongs().Count}");
-
-            var bannedSongs = playlistManager.GetSongs()
-                .Where(c => songBanning.IsBanned(c))
-                .ToList();
-
-            foreach (var song in bannedSongs) playlistManager.RemoveSong(song);
-
-            log?.WriteLine($"Songs After Filtering: {playlistManager.GetSongs().Count}");
-
-            playlistManager.Generate();
-
-            status = "Ready";
         }
 
         public void FilterSyncURL(PlaylistPath loadPath, PlaylistPath savePath)

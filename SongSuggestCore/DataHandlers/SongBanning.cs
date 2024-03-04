@@ -33,7 +33,7 @@ namespace BanLike
         }
         public Boolean IsBanned(SongID songID)
         {
-            return IsBanned(songID, BanType.SongSuggest);
+            return IsBanned(songID, BanType.Global);
         }
         public Boolean IsBanned(SongID songID, BanType banType)
         {
@@ -46,7 +46,7 @@ namespace BanLike
         }
         public Boolean IsPermaBanned(SongID songID)
         {
-            return IsPermaBanned(songID, BanType.SongSuggest);
+            return IsPermaBanned(songID, BanType.Global);
         }
         public Boolean IsPermaBanned(SongID songID, BanType banType)
         {
@@ -61,7 +61,7 @@ namespace BanLike
 
         public void LiftBan(SongID songID)
         {
-            LiftBan(songID, BanType.SongSuggest);
+            LiftBan(songID, BanType.Global);
         }
 
         public void LiftBan(SongID songID, BanType banType)
@@ -72,17 +72,22 @@ namespace BanLike
 
         public void SetBan(String songHash, String difficulty, int days)
         {
-            //If a ban is in place, remove it before setting the new ban.
-            if (IsBanned(songHash, difficulty)) LiftBan(songHash, difficulty);
+            SongID songID = SongLibrary.GetID(songHash, difficulty);
+            SetBan(songID, days);
+        }
 
-            var songID = SongLibrary.GetID(songHash, difficulty);
+        public void SetBan(SongID songID, int days)
+        {
+            //If a ban is in place, remove it before setting the new ban.
+            if (IsBanned(songID)) LiftBan(songID);
+
             bannedSongs.Add(new SongBan
             {
                 expire = DateTime.UtcNow.AddDays(days),
                 activated = DateTime.UtcNow,
                 songID = songID.GetSong().internalID,
-                banType = BanType.SongSuggest,
-                songName = SongLibrary.GetDisplayName(songID)          
+                banType = BanType.Global,
+                songName = SongLibrary.GetDisplayName(songID)
             });
             Save();
         }
@@ -94,7 +99,7 @@ namespace BanLike
         }
         public void SetPermaBan(SongID songID)
         {
-            SetPermaBan(songID, BanType.SongSuggest);
+            SetPermaBan(songID, BanType.Global);
         }
         public void SetPermaBan(SongID songID, BanType banType)
         {
@@ -110,6 +115,14 @@ namespace BanLike
             Save();
         }
 
+        public DateTime GetBanExpire(SongID songID)
+        {
+            if (IsBanned(songID))
+            {
+                return bannedSongs.First(p => p.songID == songID.GetSong().internalID).expire;
+            }
+            return DateTime.MinValue;
+        }
 
         public void Save()
         {

@@ -4,7 +4,7 @@ namespace BanLike
 {
     public enum BanType
     {
-        SongSuggest,    //Banned in the Suggestions
+        Global,    //Banned in the Suggestions
         Oldest,      //Banned in the Oldest Songs
         AccSaber        //Banned from the AccSaber list
     }

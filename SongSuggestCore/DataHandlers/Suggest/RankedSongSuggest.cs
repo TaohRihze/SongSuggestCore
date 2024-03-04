@@ -290,7 +290,7 @@ namespace Actions
 
             //Find available songs
             var filteredSongs = suggestSM.PlayerScoresIDs()                                 //Grab songID's for songs matching the given Suggest Context from Source Manager
-                .Where(c => !songSuggest.songBanning.IsPermaBanned(c, BanType.SongSuggest)) //Remove Perma Banned Songs
+                .Where(c => !songSuggest.songBanning.IsPermaBanned(c, BanType.Global)) //Remove Perma Banned Songs
                 .OrderByDescending(value => suggestSM.PlayerScoreValue(value))              //Order Songs by value
                 .ToList();
             //If it is AccSaber leaderboard, filter origin songs if needed

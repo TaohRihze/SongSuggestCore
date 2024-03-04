@@ -43,7 +43,7 @@ namespace PlaylistNS
         public PlaylistManager(PlaylistSyncURL syncURL)
         {
             LoadSyncURL(syncURL);
-            this.syncURL = syncURL.SyncURL;
+            //this.syncURL = syncURL.SyncURL;
         }
 
         //Set FilePath via a PlaylistPath
@@ -61,7 +61,9 @@ namespace PlaylistNS
 
         public void LoadSyncURL(PlaylistSyncURL syncURL)
         {
-            SetPlayList(songSuggest.webDownloader.LoadWebURL(syncURL.SyncURL));
+            var playlist = songSuggest.webDownloader.LoadWebURL(syncURL.SyncURL);
+            if (playlist == null) return; //Error occured, so lets not ruin current list.
+            SetPlayList(playlist);
         }
 
         public void SetPlayList(Playlist playlist)
@@ -70,7 +72,7 @@ namespace PlaylistNS
             author = playlist.playlistAuthor;
             image = playlist.image;
             description = playlist.playlistDescription;
-            syncURL = playlist.syncURL;
+            syncURL = playlist.customData.syncURL;
             songIDs.Clear();
 
             foreach (var song in playlist.songs)
@@ -94,7 +96,7 @@ namespace PlaylistNS
             playlist.playlistAuthor = author;
             playlist.image = image;
             playlist.playlistDescription = description;
-            playlist.syncURL = syncURL;
+            playlist.customData.syncURL = syncURL;
 
             playlist.songs = new List<SongJson>();
             foreach (var songID in songIDs)
@@ -115,10 +117,8 @@ namespace PlaylistNS
 
                 playlist.songs.Add(songJSON);
             }
-
-            //**Missing** Insert code to load this objects data to the playlist before saving.
-
             songSuggest.fileHandler.SavePlaylist(playlist, fileName);
+            //songSuggest.fileHandler.SavePlaylist(playlist, "lastsaved.bplist"); //Debug code
         }
 
         //Add a song to the playlist
@@ -137,21 +137,6 @@ namespace PlaylistNS
         {
             songIDs.Remove(songID);
         }
-
-        //private String GetSongString(String songID)
-        //{
-        //    string songText = "";
-        //    songText += "{";
-
-        //    songText += "\"hash\":\"" + songSuggest.songLibrary.GetHash(songID) + "\",";
-        //    songText += "\"difficulties\":[{";
-        //    songText += "\"characteristic\":\"Standard\",";
-        //    songText += "\"name\":\"" + songSuggest.songLibrary.GetDifficultyName(songID) + "\"";
-
-        //    songText += "}]},";
-
-        //    return songText;
-        //}
 
         public List<SongID> GetSongs()
         {

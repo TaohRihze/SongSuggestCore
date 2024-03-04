@@ -334,8 +334,13 @@ namespace WebDownloading
             catch
             {
                 songSuggest.log?.WriteLine("Error downloading given WebURL");
+                return null;
             }
-            return new Playlist();
+            return new Playlist()
+            {
+                songs = new List<SongJson>(),
+                customData = new CustomData() {syncURL = weblink }
+            };
         }
     }
 
