@@ -21,8 +21,8 @@ namespace Actions
 
             originSongs = new SongEndPointCollection() { endPoints = endPoints };
 
-            //Set values to local values that are reused multiple times, no need to calculate them every time.
-            int maxRank = data.leaderboard.top10kPlayers.Max(c => c.rank);
+            //Set values to local values that are reused multiple times, no need to calculate them every time. (empty leaderboard needs to be handled, we set max rank to 0, it should never be used).
+            int maxRank = data.leaderboard.top10kPlayers.Any() ? data.leaderboard.top10kPlayers.Max(c => c.rank) : 0;
 
             //We are preparing the actual linking between a playrs origin songs to their suggested target songs.
             //origin -> matching leaderboard player -> other leaderboard players songs
@@ -112,10 +112,10 @@ namespace Actions
 
             //Score validation check, we need to fail only if the song is not unplayed (0 value), and is outside the given limits. Single lining this is prone to errors.
             double playerSongValue = data.suggestSM.PlayerScoreValue(originSongCandidate.songID);
-            bool validatedScore = false;
-            if (playerSongValue == 0) validatedScore = true;
-            if (originSongCandidate.pp < playerSongValue * data.betterAccCap && originSongCandidate.pp > playerSongValue * data.worseAccCap) validatedScore = true;
-            if (!validatedScore) return false; //Other checks could be later, hence the return for this section.
+            bool invalidScore = true;
+            if (playerSongValue == 0) invalidScore = false;
+            if ((originSongCandidate.pp < (playerSongValue * data.betterAccCap)) && (originSongCandidate.pp > (playerSongValue * data.worseAccCap))) invalidScore = false;
+            if (invalidScore) return false; //Other checks could be later, hence the return for this section.
 
             return true; //All checks passed
         }

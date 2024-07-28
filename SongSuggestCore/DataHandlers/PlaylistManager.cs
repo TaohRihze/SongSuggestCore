@@ -1,4 +1,5 @@
-﻿using PlaylistJson;
+﻿using Newtonsoft.Json.Linq;
+using PlaylistJson;
 using Settings;
 using SongLibraryNS;
 using SongSuggestNS;
@@ -17,6 +18,7 @@ namespace PlaylistNS
         public String fileName { get; set; } = "Playlist";
         public String description { get; set; } = "";
         public String syncURL { get; set; } = null;
+        public JObject jObject { get; set; } = new JObject();
 
         //List of songID's on added songs
         public List<SongID> songIDs = new List<SongID>();
@@ -35,8 +37,8 @@ namespace PlaylistNS
         //Constructor via FilePath
         public PlaylistManager(PlaylistPath playlistPath)
         {
-            SetFilePath(playlistPath);
-            LoadFile(fileName);
+            //SetFilePath(playlistPath);
+            LoadFile(playlistPath);
         }
 
         //Constructor via SyncURL
@@ -54,19 +56,61 @@ namespace PlaylistNS
             fileName = Path.Combine(path.Subfolders, $"{path.FileName}.{path.FileExtension}");
         }
 
-        public void LoadFile(String playlistFileName)
+        //public void LoadFileOld(String playlistFileName)
+        //{
+        //    SetPlayList(songSuggest.fileHandler.LoadPlaylist(playlistFileName));
+        //}
+
+        public void LoadFile(PlaylistPath filePath)
         {
-            SetPlayList(songSuggest.fileHandler.LoadPlaylist(playlistFileName));
+            SetFilePath(filePath);
+            LoadFile();
+        }
+
+        public void LoadFile()
+        {
+            SetPlayList(songSuggest.fileHandler.LoadPlaylist(fileName));
         }
 
         public void LoadSyncURL(PlaylistSyncURL syncURL)
         {
-            var playlist = songSuggest.webDownloader.LoadWebURL(syncURL.SyncURL);
+            var playlist = songSuggest.webDownloader.LoadWebURL(syncURL);
+
             if (playlist == null) return; //Error occured, so lets not ruin current list.
+
+            //Check if the SyncURL is in correct place, if not, then add it.
+            if (!playlist.ContainsKey("customData")) { playlist["customData"] = new JObject(); }
+            if (!((JObject)playlist["customData"]).ContainsKey("syncURL")) playlist["customData"]["syncURL"] = syncURL.SyncURL;
+
             SetPlayList(playlist);
         }
 
-        public void SetPlayList(Playlist playlist)
+        //Sets the playlist via a JObject (from file or web) Is to replace current functions once working.
+        //Internal as public is eithr a filepath or syncurl.
+        internal void SetPlayList(JObject playlist)
+        {
+            jObject = playlist;
+
+            title = (string)playlist["playlistTitle"];
+            author = (string)playlist["playlistAuthor"];
+            image = (string)playlist["image"];
+            description = (string)playlist["playlistDescription"];
+            syncURL = (string)playlist["customData"]["syncURL"];
+            songIDs.Clear();
+
+            foreach (var song in (JArray)playlist["songs"])
+            {
+                foreach (var difficulty in (JArray)song["difficulties"])
+                {
+                    if ((string)difficulty["characteristic"] == "Standard")
+                    {
+                        songIDs.Add(SongLibrary.GetID((string)song["hash"], (string)difficulty["name"]));
+                    }
+                }
+            }
+        }
+
+        internal void SetPlayList(Playlist playlist)
         {
             title = playlist.playlistTitle;
             author = playlist.playlistAuthor;
@@ -90,15 +134,80 @@ namespace PlaylistNS
         //Save a playlist file from the added song ID's
         public void Generate()
         {
-            Playlist playlist = new Playlist();
+            //Overwrite the stored full object with values that could have been replaced (managed by PlaylistManager)
+            jObject["playlistTitle"] = title;
+            jObject["playlistAuthor"] = author;
+            jObject["playlistDescription"] = description;
 
-            playlist.playlistTitle = title;
-            playlist.playlistAuthor = author;
-            playlist.image = image;
-            playlist.playlistDescription = description;
-            playlist.customData.syncURL = syncURL;
+            //Not all SyncURLs will contain their own URL in the web download, or save it in root,
+            //to ensure it is kept in place we always generate the customData and store a syncURL if we got a value in our syncURL
+            if (!jObject.ContainsKey("customData") && !string.IsNullOrEmpty(syncURL)) { jObject["customData"] = new JObject(); }
+            if (!string.IsNullOrEmpty(syncURL)) jObject["customData"]["syncURL"] = syncURL;
 
-            playlist.songs = new List<SongJson>();
+            //Modify songs and update if present
+            //Songs that was loaded/received from web, can contain more data
+            JArray jObjectArray = (JArray)jObject["songs"] ?? new JArray();
+            //Songs that was selected for the playlist
+            JArray selectedSongsArray = JArray.FromObject(GetSongJsons());
+            //Combined data of the above 2 sources (we try and maintain as much of the original data as possible).
+            JArray mergedSongsArray = new JArray();
+
+            foreach (JObject selectedSong in selectedSongsArray)
+            {
+                bool noOriginal = true;
+                foreach (JObject songjObject in jObjectArray)
+                {
+                    if (CompareSongs(selectedSong, songjObject)) 
+                    {
+                        //We found a matching song, but as the difficulties in the loaded/web URL playlist may be stacked, we have to replace it only for the matching difficulty.
+                        //Note that any other data in the difficulties object may be lost, but there should not be other values. Will need examples of this before making a more complex
+                        //Handling (such as how do you define which of the values goes where?)
+                        var songjObjectClone = songjObject.DeepClone();
+                        songjObjectClone["difficulties"] = selectedSong["difficulties"];
+                        mergedSongsArray.Add(songjObjectClone);
+                        noOriginal = false;
+                        break;
+                    }
+                }
+                if (noOriginal) mergedSongsArray.Add(selectedSong);
+            }
+
+            //Move songs after other data for better overview (except image).
+            jObject.Remove("songs");
+            jObject["songs"] = mergedSongsArray;
+
+            //Set image at end as it is normally the largest element and it is the other elements we are interested in viewing normally.
+            jObject.Remove("image");
+            jObject["image"] = image;
+
+            songSuggest.fileHandler.SavePlaylist(jObject, fileName);
+        }
+
+        //Working on the assumption song1 does not contain multiple difficulties.
+        public bool CompareSongs(JObject song1, JObject song2)
+        {
+            //Check if hash is the same
+            if ((string)song1["hash"] != (string)song2["hash"]) return false;
+
+            //Now we need to loop the difficulties if there is any match in the 2nd song (
+
+            string newChar = (string)song1["difficulties"][0]["characteristic"];
+            string newName = (string)song1["difficulties"][0]["name"];
+
+            foreach (JObject difc in song2["difficulties"])
+            {
+                string oldChar = (string)difc["characteristic"];
+                string oldName = (string)difc["name"];
+
+                if (oldChar.ToLowerInvariant() == newChar.ToLowerInvariant() && oldName.ToLowerInvariant() == newName.ToLowerInvariant()) return true;
+            }
+            return false;
+        }
+
+        private List<SongJson> GetSongJsons()
+        {
+            List<SongJson> returnSongs = new List<SongJson>();
+
             foreach (var songID in songIDs)
             {
                 var song = songID.GetSong();
@@ -115,11 +224,45 @@ namespace PlaylistNS
                 songJSON.difficulties = new List<Difficulty>();
                 songJSON.difficulties.Add(difficultyJSON);
 
-                playlist.songs.Add(songJSON);
+                returnSongs.Add(songJSON);
             }
-            songSuggest.fileHandler.SavePlaylist(playlist, fileName);
-            //songSuggest.fileHandler.SavePlaylist(playlist, "lastsaved.bplist"); //Debug code
+            return returnSongs;
         }
+
+        ////Save a playlist file from the added song ID's
+        //public void GenerateOld()
+        //{
+        //    Playlist playlist = new Playlist();
+
+        //    playlist.playlistTitle = title;
+        //    playlist.playlistAuthor = author;
+        //    playlist.image = image;
+        //    playlist.playlistDescription = description;
+        //    playlist.customData.syncURL = syncURL;
+
+        //    playlist.songs = new List<SongJson>();
+        //    foreach (var songID in songIDs)
+        //    {
+        //        var song = songID.GetSong();
+
+        //        SongJson songJSON = new SongJson();
+
+        //        songJSON.hash = song.hash;// songSuggest.songLibrary.GetHash(songID);
+
+        //        Difficulty difficultyJSON = new Difficulty();
+        //        //difficultyJSON.characteristic = "Standard";
+        //        difficultyJSON.characteristic = song.characteristic;//SongLibrary.SongIDToSong(songID).characteristic;
+        //        difficultyJSON.name = song.GetDifficultyText();//songSuggest.songLibrary.GetDifficultyName(songID);
+
+        //        songJSON.difficulties = new List<Difficulty>();
+        //        songJSON.difficulties.Add(difficultyJSON);
+
+        //        playlist.songs.Add(songJSON);
+        //    }
+        //    songSuggest.fileHandler.SavePlaylist(playlist, fileName);
+        //    //songSuggest.fileHandler.SavePlaylist(playlist, "lastsaved.bplist"); //Debug code
+        //    //GenerateJObject();
+        //}
 
         //Add a song to the playlist
         public void AddSong(SongID songID)

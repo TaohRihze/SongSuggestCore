@@ -290,9 +290,10 @@ namespace Actions
 
             //Find available songs
             var filteredSongs = suggestSM.PlayerScoresIDs()                                 //Grab songID's for songs matching the given Suggest Context from Source Manager
-                .Where(c => !songSuggest.songBanning.IsPermaBanned(c, BanType.Global)) //Remove Perma Banned Songs
+                .Where(c => !songSuggest.songBanning.IsPermaBanned(c, BanType.Global))      //Remove Perma Banned Songs
                 .OrderByDescending(value => suggestSM.PlayerScoreValue(value))              //Order Songs by value
                 .ToList();
+
             //If it is AccSaber leaderboard, filter origin songs if needed
             if (suggestSM.leaderboardType == LeaderboardType.AccSaber)
             {
@@ -324,11 +325,12 @@ namespace Actions
                     .Take(targets)                                                                                                  //Reduce the list to the found target
                     .ToList();                                                                                                      //And turn it back into a list for later processing
 
-                //Find the minimum required AP target for a song
-                double minTargetAP = suggestSM.PlayerScoreValue(filteredSongs.First()) * maxSpreadBetweenSongs;
+                //Find the minimum required AP target for a song, or set 0 if no songs was found.
+                double minTargetAP = filteredSongs.Any() ? suggestSM.PlayerScoreValue(filteredSongs.First()) * maxSpreadBetweenSongs : 0;
 
                 //Filter out songs with a worse AP than the target.
                 filteredSongs = filteredSongs.Where(c => suggestSM.PlayerScoreValue(c) > minTargetAP).ToList();
+
             }
             //Default selection. (Non Acc Saber)
             else

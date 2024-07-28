@@ -1,10 +1,4 @@
-﻿//using Actions;
-//using PlayerScores;
-//using ScoreSabersJson;
-//using ScoreCollection = PlayerScores.ScoreCollection;
-//using PlayerScore = PlayerScores.ScoreCollection;
-//using ScoreCollectionJson = ScoreSabersJson.ScoreCollection;
-using SongSuggestNS;
+﻿using SongSuggestNS;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +7,6 @@ using ActivePlayerData;
 using Actions;
 using Curve;
 using System.IO;
-using System.Collections;
 
 namespace PlayerScores
 {

@@ -8,6 +8,7 @@ namespace SongLibraryNS
 {
     public class Song 
     {
+        public string name { get; set; }
         private string _cachedInternalID;
         [JsonIgnore]
         public string internalID //Internal ID
@@ -25,7 +26,6 @@ namespace SongLibraryNS
         public string scoreSaberID { get; set; }
         public string beatLeaderID { get; set; }
         public string beatSaverID { get; set; }
-        public string name { get; set; }
         public string hash { get; set; }
         public string difficulty { get; set; }
         public string characteristic { get; set; } = "Standard"; //Default might be removed later once all data is updated, for now updating on first load is fine.

@@ -13,6 +13,7 @@ using LinkedData;
 using System.Text;
 using Settings;
 using PlaylistJson;
+using Newtonsoft.Json.Linq;
 
 namespace WebDownloading
 {
@@ -190,7 +191,7 @@ namespace WebDownloading
         }
 
         //Generic web puller for BeatLeader songScore
-        public BeatLeaderScore GetBeatLeaderScore(SongID songID)
+        public BeatLeaderJson.Score GetBeatLeaderScore(SongID songID)
         {
             try
             {
@@ -201,13 +202,68 @@ namespace WebDownloading
                 String songDifcName = songID.GetSong().GetDifficultyText();//songSuggest.songLibrary.GetDifficultyName(songID);
                 string webString = $"https://api.beatleader.xyz/score/{playerID}/{songHash}/{songDifcName}/Standard";
                 String songInfo = client.DownloadString(webString);
-                return JsonConvert.DeserializeObject<BeatLeaderScore>(songInfo, serializerSettings);
+                return JsonConvert.DeserializeObject<BeatLeaderJson.Score>(songInfo, serializerSettings);
             }
             catch
             {
                 songSuggest.log?.WriteLine("Error finding song on BeatLeader with ID: " + songID);
             }
-            return new BeatLeaderScore();
+            return new BeatLeaderJson.Score();
+        }
+
+        //https://api.beatleader.xyz/leaderboard/clanRankings/2bf61xx51?page=1&count=1
+        //Generic web puller for BeatLeader Clan Leaderboard
+        public BeatLeaderJson.LeaderboardClanRankings GetBeatLeaderClanLeaderboard(SongID songID, int page, int count)
+        {
+            try
+            {
+                _BeatLeaderThrottler.Call();
+                //https://api.beatleader.xyz/leaderboard/2bf61xx51?page=1&count=1
+                string beatLeaderLeaderboardID = songID.GetSong().beatLeaderID;
+
+                //This is internal handling as it is data missing in SongLibrary that could have been there, but is not maintained currently, only ranked songs are kept.
+                if (string.IsNullOrEmpty(beatLeaderLeaderboardID))
+                {
+                    songSuggest.log?.WriteLine("This Clan Leaderboard is not in known Beat Leader data (Ranked Songs Only): " + songID);
+                    return new BeatLeaderJson.LeaderboardClanRankings();
+                }
+                string webString = $"https://api.beatleader.xyz/leaderboard/clanRankings/{beatLeaderLeaderboardID}/?page={page}&count={count}";
+                String songInfo = client.DownloadString(webString);
+                return JsonConvert.DeserializeObject<BeatLeaderJson.LeaderboardClanRankings>(songInfo, serializerSettings);
+            }
+            catch
+            {
+                songSuggest.log?.WriteLine("Error finding Clan Leaderboard on BeatLeader with ID: " + songID);
+            }
+            return new BeatLeaderJson.LeaderboardClanRankings();
+        }
+
+
+
+        //Generic web puller for BeatLeader Leaderboard
+        public BeatLeaderJson.Leaderboard GetBeatLeaderLeaderboard(SongID songID, int page, int count)
+        {
+            try
+            {
+                _BeatLeaderThrottler.Call();
+                //https://api.beatleader.xyz/leaderboard/2bf61xx51?page=1&count=1
+                string beatLeaderLeaderboardID = songID.GetSong().beatLeaderID;
+                
+                //This is internal handling as it is data missing in SongLibrary that could have been there, but is not maintained currently, only ranked songs are kept.
+                if (string.IsNullOrEmpty(beatLeaderLeaderboardID))
+                {
+                    songSuggest.log?.WriteLine("This leaderboard is not in known Beat Leader data (Ranked Songs Only): " + songID);
+                    return new BeatLeaderJson.Leaderboard();
+                }
+                string webString = $"https://api.beatleader.xyz/leaderboard/{beatLeaderLeaderboardID}/?page={page}&count={count}";
+                String songInfo = client.DownloadString(webString);
+                return JsonConvert.DeserializeObject<BeatLeaderJson.Leaderboard>(songInfo, serializerSettings);
+            }
+            catch
+            {
+                songSuggest.log?.WriteLine("Error finding Leaderboard on BeatLeader with ID: " + songID);
+            }
+            return new BeatLeaderJson.Leaderboard();
         }
 
         //Generic web puller for BeatLeader Compact Scores
@@ -341,6 +397,21 @@ namespace WebDownloading
                 songs = new List<SongJson>(),
                 customData = new CustomData() {syncURL = weblink }
             };
+        }
+
+        internal JObject LoadWebURL(PlaylistSyncURL weblink)
+        {
+            try
+            {
+                //https://api.accsaber.com/ranked-maps
+                String songInfo = client.DownloadString(weblink.SyncURL);
+                return JsonConvert.DeserializeObject<JObject>(songInfo, serializerSettings);
+            }
+            catch
+            {
+                songSuggest.log?.WriteLine("Error downloading given WebURL");
+                return null;
+            }
         }
     }
 

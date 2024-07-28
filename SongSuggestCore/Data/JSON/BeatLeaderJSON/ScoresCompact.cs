@@ -31,7 +31,7 @@ namespace BeatLeaderJson
         public int epochTime { get; set; }
     }
 
-    public class Leaderboard
+    public class LeaderboardCompact
     {
         public string id { get; set; }
         public string songHash { get; set; }
@@ -42,6 +42,6 @@ namespace BeatLeaderJson
     public class DataItem
     {
         public Score score { get; set; }
-        public Leaderboard leaderboard { get; set; }
+        public LeaderboardCompact leaderboard { get; set; }
     }
 }

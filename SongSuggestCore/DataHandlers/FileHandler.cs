@@ -12,12 +12,18 @@ using Settings;
 using PlaylistJson;
 using PlayerScores;
 using AccSaberData;
+using Newtonsoft.Json.Linq;
+using System.Xml.Linq;
 
 namespace FileHandling
 {
     public class FileHandler
     {
-        private JsonSerializerSettings serializerSettings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Ignore };
+        private JsonSerializerSettings serializerSettings = new JsonSerializerSettings { 
+            NullValueHandling = NullValueHandling.Ignore, 
+            DefaultValueHandling = DefaultValueHandling.Ignore,
+            Formatting = Formatting.Indented
+        };
 
         public SongSuggest songSuggest { get; set; }
         public FilePathSettings filePathSettings { get; set; }
@@ -33,6 +39,13 @@ namespace FileHandling
                 }
             }
         }
+
+        public void SaveOldAndNewRequest(OldAndNewSettings settings)
+        {
+            File.WriteAllText(filePathSettings.BasePath + "OldAndNewRequest.json", JsonConvert.SerializeObject(settings, serializerSettings));
+        }
+
+
         //Loads the primary song library from disc
         public List<Song> LoadSongLibrary()
         {
@@ -48,18 +61,19 @@ namespace FileHandling
         }
 
         //Save a Playlist to a bplist (json format)
-        public void SavePlaylist(String playlistString, String fileName)
+        public void SavePlaylist(JObject jObject, String fileName)
         {
+            string playlistString = JsonConvert.SerializeObject(jObject, serializerSettings);
             File.WriteAllText(filePathSettings.playlistPath + fileName, playlistString);
         }
 
-        //Load a bplist playlist (json format), must include file extension. Path is from the Playlist Library location. (combined Folder\filename.extension)
-        public Playlist LoadPlaylist(String fileName)
+        //Load a playlist (bplist or json), must include file extension. Path is from the Playlist Library location. (combined Folder\filename.extension)
+        public JObject LoadPlaylist(String fileName)
         {
             string fullPath = Path.Combine(filePathSettings.playlistPath, fileName);
-            if (!File.Exists(fullPath)) SavePlaylist(new Playlist(), fileName);
+            if (!File.Exists(fullPath)) SavePlaylist(new JObject(), fileName);
             String playlistString = File.ReadAllText(fullPath);
-            return JsonConvert.DeserializeObject<Playlist>(playlistString, serializerSettings);
+            return JsonConvert.DeserializeObject<JObject>(playlistString, serializerSettings);
         }
 
         //save Playlist json

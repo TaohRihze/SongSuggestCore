@@ -23,6 +23,7 @@ namespace Actions
 
         public void GeneratePlaylist(OldAndNewSettings settings)
         {
+            songSuggest.fileHandler.SaveOldAndNewRequest(settings);
             this.settings = settings;
 
             //Check if nothing is selected for the SongCategories for both played and unplayed, and if default the selection to active leaderboards played

@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <Compile Remove="Actions\ActivePlayerRefreshData.cs" />
+    <Compile Remove="Data\JSON\BeatLeaderJSON\Score.cs" />
     <Compile Remove="Data\Settings\OldestSongSettings.cs" />
   </ItemGroup>
 

@@ -161,6 +161,8 @@ namespace AccSaberData
 
                     //12 scores per page, we need to figure out how many pages at most there is (just to give us an idea of how far we need to look and where we are,
                     //likely we will not need to parse them all to hit the 95% acc mark.
+                    //**Bug the listed totalPages is wrong ... as the count is based on LeaderboardInfo that displays total Personal records (potential multiple entries per player).
+                    //**Needs updating at some point to instead grab via the standard function that gets correct count (GetLeaderboardScores)
                     int totalPages = (int)Math.Ceiling((double)songMeta.plays / 12);
                     int page = 1;
                     double targetAcc = 0.95;
