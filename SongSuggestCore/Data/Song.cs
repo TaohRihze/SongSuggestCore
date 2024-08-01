@@ -29,15 +29,18 @@ namespace SongLibraryNS
         public string hash { get; set; }
         public string difficulty { get; set; }
         public string characteristic { get; set; } = "Standard"; //Default might be removed later once all data is updated, for now updating on first load is fine.
+        
+        //All star ratings, BL takes a lot, so should likely be refactored later to a list of "rating objects", and those can have a reference name and value. Allowing different
+        //Rating structures. Also will support multi rankings in a single leaderboard (e.g. overlapping BL names depending on modifiers).
         public SongCategory songCategory { get; set; }
+        
         public double starScoreSaber { get; set; }
-        //{
-        //    get => starBeatSaber;
-        //    set => starBeatSaber = value;
-        //}
-        //[Obsolete("Use starScoreSaber instead")]
-        //public double starBeatSaber { get; set; }
+        //---BL Ratings
         public double starBeatLeader { get; set; }
+        public double starAccBeatLeader { get; set; }
+        public double starPassBeatLeader { get; set; }
+        public double starTechBeatLeader { get; set; }
+        //---
         public double complexityAccSaber { get; set; }
 
         public String GetDifficultyText()

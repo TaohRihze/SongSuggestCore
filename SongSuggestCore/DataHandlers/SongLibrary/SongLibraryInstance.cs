@@ -69,6 +69,9 @@ namespace SongLibraryNS
             //Set or Update remaining generic info
             internalSong.beatLeaderID = song.id;
             internalSong.starBeatLeader = song.stars;
+            internalSong.starAccBeatLeader = song.accRating;
+            internalSong.starPassBeatLeader = song.passRating;
+            internalSong.starTechBeatLeader = song.techRating;
 
             //Internal library links
             SetLibraryLink(internalSong);

@@ -13,7 +13,6 @@ using PlaylistJson;
 using PlayerScores;
 using AccSaberData;
 using Newtonsoft.Json.Linq;
-using System.Xml.Linq;
 
 namespace FileHandling
 {

@@ -464,6 +464,9 @@ namespace SongSuggestNS
                 {
                     songLibrary.RemoveSongCategory(song, SongCategory.BeatLeader);
                     song.starBeatLeader = 0;
+                    song.starAccBeatLeader = 0;
+                    song.starPassBeatLeader = 0;
+                    song.starTechBeatLeader = 0;
                     song.beatLeaderID = null;
                 }
 

@@ -131,7 +131,7 @@ namespace PlayerScores
                 case LeaderboardType.AccSaber:
                     return AccSaberCurve.AP(score.Accuracy, song.complexityAccSaber);
                 case LeaderboardType.BeatLeader:
-                    return 0; //No Curve Calculation yet.
+                    return BeatLeaderCurve.PP(score.Accuracy, song);
                 default:
                     return 0;
             }
