@@ -30,8 +30,11 @@ namespace Actions
             public TextWriter log { get => manager.songSuggest.log; }
 
             //Settings DTO Values
-            public double betterAccCap { get => manager.settings.BetterAccCap; }
-            public double worseAccCap { get => manager.settings.WorseAccCap; }
+            //public double betterAccCap { get => manager.settings.BetterAccCap; }
+            //public double worseAccCap { get => manager.settings.WorseAccCap; }
+            public double LinkKeepPercent { get => manager.LinkKeepPercent; }
+
+
             public bool useLikedSongs { get => manager.settings.UseLikedSongs; }
             public bool fillLikedSongs { get => manager.settings.FillLikedSongs; }
             public int originSongsCount { get => manager.settings.OriginSongCount; }

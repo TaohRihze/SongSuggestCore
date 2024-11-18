@@ -21,14 +21,6 @@ namespace LinkedData
             }
         }
 
-        //public void SetDistance(SongSuggest songSuggest, SongIDType songIDType)
-        //{
-        //    foreach (SongEndPoint songEndPoint in endPoints.Values)
-        //    {
-        //        songEndPoint.SetDistance(songSuggest,songIDType);
-        //    }
-        //}
-
         public void SetStyle(SongEndPointCollection originSongs, SongIDType songIDType)
         {
             foreach (SongEndPoint songEndPoint in endPoints.Values)
@@ -36,21 +28,5 @@ namespace LinkedData
                 songEndPoint.SetStyle(originSongs, songIDType);
             }
         }
-
-        //public void SetPP(SongSuggest songSuggest, SongIDType songIDType)
-        //{
-        //    foreach (SongEndPoint songEndPoint in endPoints.Values)
-        //    {
-        //        songEndPoint.SetPP(songSuggest, songIDType);
-        //    }
-        //}
-
-        //public void SetLocalPP(SongSuggest songSuggest, SongIDType songIDType)
-        //{
-        //    foreach (SongEndPoint songEndPoint in endPoints.Values)
-        //    {
-        //        songEndPoint.SetLocalPP(songSuggest, songIDType);
-        //    }
-        //}
     }
 }

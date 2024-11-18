@@ -57,7 +57,7 @@ namespace Actions
 
         //Amount of songlinks for good results. Less and we can try and remove the better/worse limits and evaluate the results.
         //Removing bad results, and just add default results to fill the list to make sure there is results for the playlist.
-        int minSongLinks = 6000;
+        //int minSongLinks = 6000;
         internal int linkedPlayers = 0;
         int linkedSongs = 0;
 
@@ -67,6 +67,9 @@ namespace Actions
 
         //Value for how many spots must be expected to be improved before being shown in suggestions (unplayed songs are always shown)
         int improveSpots = 5;
+
+        //Percent of song links to keep (70% seems to work well in general, but acc saber players can use PP Potential slider to adjust this (
+        double LinkKeepPercent = 0.7;
 
         //Links for variables used in this class from Settings file. Classes are not done here
         public bool ignorePlayedAll => settings.IgnorePlayedAll;
@@ -118,6 +121,9 @@ namespace Actions
         //Creates a playlist with playlist count suggested songs based on the link system.
         public void SuggestedSongs()
         {
+            //save request
+            songSuggest.fileHandler.SaveSongSuggestRequest(settings);
+
             ScoreLocation scoreLocation = ScoreLocation.ScoreSaber;
             switch (settings.Leaderboard)
             {
@@ -126,11 +132,16 @@ namespace Actions
                     break;
                 case LeaderboardType.AccSaber:
                     scoreLocation = ScoreLocation.ScoreSaber;
+                    //Workaround to allow slider to be used from UI, may be kept if useful.
+                    LinkKeepPercent = 1.0 - (settings.ExtraSongs / 100.0);
+                    if (LinkKeepPercent < 0.1) LinkKeepPercent = 0.1;
                     break;
                 case LeaderboardType.BeatLeader:
                     scoreLocation = ScoreLocation.BeatLeader;
                     break;
             }
+
+            songSuggest.log?.WriteLine($"LinkKeepPercent set at: {LinkKeepPercent}");
 
             suggestSM = new SuggestSourceManager()
             {
@@ -219,18 +230,6 @@ namespace Actions
             linkedPlayers = linkedSongs / 19; //Workaround for now there is always 19 linked songs per player, this may change.
             songSuggest.log?.WriteLine("Completion: " + (songSuggestCompletion * 100) + "%");
             songSuggest.log?.WriteLine($"Suggest Linking Done: {timer.ElapsedMilliseconds}ms");
-
-            //If low links are found, we try again this time with distance filters removed.
-            if (linkedSongs < minSongLinks)
-            {
-                songSuggest.lowQualitySuggestions = true;
-                songSuggest.log?.WriteLine("Not Enough Player Links Found ({0}) with Acc Limit on. Activate Limit Breaker.", linkedPlayers);
-                betterAccCap = double.MaxValue;
-                worseAccCap = 0;
-                GenerateLinks.Execute(dto, out originSongs, out targetSongs, out linkedSongs);
-                songSuggest.log?.WriteLine("Completion: " + (songSuggestCompletion * 100) + "%");
-                songSuggest.log?.WriteLine($"Suggest Linking Done: {timer.ElapsedMilliseconds}ms");
-            }
         }
 
         //If the player has no available played songs (or low count) we need a list of potential fillers.
@@ -376,17 +375,9 @@ namespace Actions
         //Generate the weighting for the different Filters and stores them in the Endpoint Data.
         public void EvaluateSongs()
         {
-            //TODO: Should be split into new Distance calculation, and overWeight calculculation, and update the variables needed to be sent.
-
             //Calculate strength for filter rankings in the SongLink data with needed data sent along.
             targetSongs.SetRelevance(this, originSongs.endPoints.Count(), requiredMatches, suggestSM.LeaderboardSongIDType());
             targetSongs.SetStyle(originSongs, suggestSM.LeaderboardSongIDType());
-
-            //New test to try and guess PP
-            //targetSongs.SetPP(songSuggest);
-
-            //New test to compare local group vs global group stuff
-            //targetSongs.SetLocalPP(songSuggest);
         }
 
         //Takes the orderes suggestions and apply the filter values to their ranks, and create the nameplate orderings
@@ -446,58 +437,6 @@ namespace Actions
             //Sort list, and get song ID's only
             sortedSuggestions = totalScore.OrderBy(s => s.Value).Select(s => s.Key).ToList();
 
-            //The suggestions may be weak if there is a low amount of Links, so current suggestions needs evaluation to make
-            //sure if link count is low that potential too hard songs are removed.
-            //read all remaining songs to the ends of the list from easiest to hardest (if they are on enough top 20's), as this makes
-            //it possible to filter disliked, too hard songs etc normally, and always provide a list of requested amount of songs.
-            LowLinkEvaluation();
-        }
-
-        //There is not enough links to have a high confidence in all results are doable
-        //So removes any songs outside expected range in min/max PP values
-        //Then takes all remaining songs with at least a few plays and readd them after actual suggestions to make sure player
-        //Can ban/have recently played songs removed without dropping under requested songs in suggestions.
-        public void LowLinkEvaluation()
-        {
-            //Skip this if enough links. (It is possible that removing the low accuracy filter ended up giving enough links that song
-            //suggestions are good, even if the players acc is so low/high that the Better/Worse Acc filter was triggered).
-            if (linkedSongs < minSongLinks)
-            {
-                songSuggest.log?.WriteLine("Low Linking found");
-                //Enable the warning for additonal steps to ensure enough songs.
-                songSuggest.lowQualitySuggestions = true;
-
-                //Get the players max score via the players played songs, and avoid errors with Max on an empty list.
-                var playerScores = suggestSM.PlayerScoresIDs();
-                double playerMaxScore = playerScores.Count() > 0 ? playerScores.Max(c => suggestSM.PlayerScoreValue(c)) : 0;
-
-                songSuggest.log?.WriteLine("Max Score Value: " + playerMaxScore);
-                songSuggest.log?.WriteLine("Filtering out songs that are expected too hard");
-                songSuggest.log?.WriteLine("Songs before filtering: {0}", sortedSuggestions.Count());
-
-                //Remove songs that have too high a min PP (expected song is outside the players skill)                
-                //Remove songs that have too high a max PP (expected players Acc is lacking)
-                //Remove songs without 3 plays (The songs scores could be random values, so rather remove them for now)
-                sortedSuggestions = sortedSuggestions
-                    .Where(c => suggestSM.Leaderboard().top10kSongMeta[c].minScore < 1.2 * playerMaxScore
-                    && suggestSM.Leaderboard().top10kSongMeta[c].maxScore < 1.5 * playerMaxScore
-                    && suggestSM.Leaderboard().top10kSongMeta[c].count >= 3)
-                    .ToList();
-
-                songSuggest.log?.WriteLine("Songs left after filtering: {0}", sortedSuggestions.Count());
-
-                //Find all songs with at least 3 plays, and sort them by MaxPP scores, so easiest is first, and remove already approved songs
-                List<SongID> remainingSongs = suggestSM.Leaderboard().top10kSongMeta
-                    .Where(c => c.Value.count >= 3)
-                    .OrderBy(c => c.Value.maxScore)
-                    .Select(c => c.Value.songID)
-                    .Select(c => SongLibrary.StringIDToSongID(c, suggestSM.LeaderboardSongIDType()))
-                    .Except(sortedSuggestions)
-                    .ToList();
-
-                //Add the songs not already suggested to the list.
-                sortedSuggestions.AddRange(remainingSongs);
-            }
         }
 
         //Filters out any songs that should not be in the generated playlist
@@ -635,8 +574,6 @@ namespace Actions
         {
             if (suggestSM.leaderboardType == LeaderboardType.AccSaber)
             {
-                //               filteredSuggestions = filteredSuggestions.Where(c => (songSuggest.songLibrary.songs[c].songCategory & accSaberPlaylistCategories) > 0).ToList();
-
                 filteredSuggestions = filteredSuggestions
                     .Where(c => SongLibrary.HasAnySongCategory(c, accSaberPlaylistCategories))
                     .ToList();

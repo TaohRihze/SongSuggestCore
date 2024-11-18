@@ -86,7 +86,7 @@ namespace SongLibraryNS
             Updated = true;
         }
 
-        //Adds a song via ScoreSaber LeaderboarDInfo json object
+        //Adds a song via ScoreSaber LeaderboardInfo json object
         public void UpsertSong(LeaderboardInfo song)
         {
             //Get the reference object for the ID of the song.
@@ -107,16 +107,21 @@ namespace SongLibraryNS
 
             //Update the scoresaber specific values
             internalSong.scoreSaberID = $"{song.id}";
-            internalSong.starScoreSaber = song.stars;
 
             //Update songlibrary Links after (so any missing references is updated)
             SetLibraryLink(internalSong);
 
             //Ranked Status
-            if
-                (internalSong.starScoreSaber > 0) AddSongCategory(internalSong, SongCategory.ScoreSaber);
+            if (song.ranked)
+            {
+                AddSongCategory(internalSong, SongCategory.ScoreSaber);
+                internalSong.starScoreSaber = song.stars;
+            }
             else
+            {
                 RemoveSongCategory(internalSong, SongCategory.ScoreSaber);
+                internalSong.starScoreSaber = 0;
+            }
 
             //Note we updated a song, so we can save Library if needed.
             Updated = true;

@@ -238,6 +238,33 @@ namespace WebDownloading
             return new BeatLeaderJson.LeaderboardClanRankings();
         }
 
+        //https://api.beatleader.xyz/leaderboard/clanRankings/3da61xxxx91/clan/85?page=1&count=5
+        //Generic web puller for BeatLeader Specified Clans Leaderboard (by ClanID)
+        public BeatLeaderJson.LeaderboardClanRankings GetBeatLeaderClanLeaderboardByID(SongID songID, int clanID, int page, int count)
+        {
+            try
+            {
+                _BeatLeaderThrottler.Call();
+                //https://api.beatleader.xyz/leaderboard/clanRankings/3da61xxxx91/clan/85?page=1&count=5
+                string beatLeaderLeaderboardID = songID.GetSong().beatLeaderID;
+
+                //This is internal handling as it is data missing in SongLibrary that could have been there, but is not maintained currently, only ranked songs are kept.
+                if (string.IsNullOrEmpty(beatLeaderLeaderboardID))
+                {
+                    songSuggest.log?.WriteLine("This Clan Leaderboard is not in known Beat Leader data (Ranked Songs Only): " + songID);
+                    return new BeatLeaderJson.LeaderboardClanRankings();
+                }
+                //https://api.beatleader.xyz/leaderboard/clanRankings/3da61xxxx91/clan/85?page=1&count=5
+                string webString = $"https://api.beatleader.xyz/leaderboard/clanRankings/{beatLeaderLeaderboardID}/clan/{clanID}?page={page}&count={count}";
+                String songInfo = client.DownloadString(webString);
+                return JsonConvert.DeserializeObject<BeatLeaderJson.LeaderboardClanRankings>(songInfo, serializerSettings);
+            }
+            catch
+            {
+                songSuggest.log?.WriteLine("Error finding Clan Leaderboard on BeatLeader with ID: " + songID);
+            }
+            return new BeatLeaderJson.LeaderboardClanRankings();
+        }
 
 
         //Generic web puller for BeatLeader Leaderboard
@@ -348,6 +375,26 @@ namespace WebDownloading
             return new List<BeatLeaderJson.SongSuggestSong>();
         }
 
+        //Beatleader New Songs
+        public BeatLeaderJson.ClanMembersList GetBeatLeaderClanMembers(string clanTag, int page, int count, bool primary)
+        {
+            try
+            {
+                _BeatLeaderThrottler.Call();
+                //https://api.beatleader.xyz/clan/genx?page=1&count=100&primary=true
+                string downloadstring = $"https://api.beatleader.xyz/clan/{clanTag}?page={page}&count={count}&primary={primary}";
+                String songInfo = client.DownloadString(downloadstring);
+                return JsonConvert.DeserializeObject<BeatLeaderJson.ClanMembersList>(songInfo, serializerSettings);
+            }
+            catch
+            {
+                songSuggest.log?.WriteLine($"Error receiving Beatleader New songs: ClanTag: {clanTag} page: {page} count: {count} primary {primary}");
+            }
+            return new BeatLeaderJson.ClanMembersList();
+        }
+
+
+
         public FilesMeta GetFilesMeta()
         {
             songSuggest.status = "Getting Files.meta";
@@ -392,11 +439,6 @@ namespace WebDownloading
                 songSuggest.log?.WriteLine("Error downloading given WebURL");
                 return null;
             }
-            return new Playlist()
-            {
-                songs = new List<SongJson>(),
-                customData = new CustomData() {syncURL = weblink }
-            };
         }
 
         internal JObject LoadWebURL(PlaylistSyncURL weblink)

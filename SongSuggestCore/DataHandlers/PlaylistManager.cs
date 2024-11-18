@@ -95,7 +95,8 @@ namespace PlaylistNS
             author = (string)playlist["playlistAuthor"];
             image = (string)playlist["image"];
             description = (string)playlist["playlistDescription"];
-            syncURL = (string)playlist["customData"]["syncURL"];
+            syncURL = (string)playlist["customData"]?["syncURL"];
+            //syncURL = (string)playlist["customData"]["syncURL"];
             songIDs.Clear();
 
             foreach (var song in (JArray)playlist["songs"])
@@ -279,6 +280,12 @@ namespace PlaylistNS
         public void RemoveSong(SongID songID)
         {
             songIDs.Remove(songID);
+        }
+
+        //Clear all songs
+        public void ClearSongs()
+        {
+            songIDs.Clear();
         }
 
         public List<SongID> GetSongs()

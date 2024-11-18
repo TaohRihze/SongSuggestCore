@@ -7,6 +7,8 @@ namespace Actions
 {
     public static class GenerateLinks
     {
+        //Decides how many of the songs are kept .7 works great.
+
         //Create the linking of the songs found to represent a player, with matching songs on the leaderboard.
         //origin -> matching leaderboard player -> other top songs from that leaderboard player
         //Goal with this is creating a link structure for future evaluations of their strength, and place them so they are easy to reach from either side.
@@ -37,7 +39,12 @@ namespace Actions
                     .Select(targetSong => new { player = originLinks.player, originSong = originLinks.originSong, targetSong = targetSong })    //Store needed variables again
                 )
                 .Select(linkData => new { link = GenerateSongLink(data, linkData.player, linkData.originSong, linkData.targetSong, maxRank), index = linkData.player.rank })    //Create songlinks for further processing
+                .OrderBy(c => c.link.distance)
                 .ToList();
+
+            //Calculate the amount of songs to keep. 70-80% seems good initial target compared to current values. Testing with 70 as it seems it gives "easier" for now
+            int targets = (int)Math.Ceiling(data.LinkKeepPercent * links.Count);
+            links = links.Take(targets).ToList();
 
             //Update completion to partial completion
             data.songSuggestCompletion = 0.44;
@@ -98,7 +105,24 @@ namespace Actions
             double localGroupsTotalValue = 0.33;
             data.songSuggestCompletion = localGroupStart + (localPercentDone * localGroupsTotalValue);
 
-            return new SongLink() { playerID = player.id, originSongScore = originSong, targetSongScore = suggestedSong };
+            //If originsongs PP is 0, it is because it is a seed/liked song, so it should be treated as optimal distance
+            //Else we calculate the absolute distance (over or under does not matter)
+            double distance = 0;
+            if (originSong.pp != 0)
+            {
+                //Testing showed this distribution gives a good split between harder/easier songs for ordering. Would have expected 4.0 as it matched older system more with
+                //Default 70% kept links for normal songs ... for Acc Saber this needs reduced.
+                distance = Math.Abs(Math.Pow(suggestedSong.pp / originSong.pp, 3.0) - 1);
+
+                //distance = Math.Abs(Math.Log(originSong.pp / suggestedSong.pp));
+                ////Reduce impact if suggested song is from stronger player
+                //if (originSong.pp < suggestedSong.pp) distance = distance * 2.1;
+            }
+                
+                
+
+
+            return new SongLink() { playerID = player.id, originSongScore = originSong, targetSongScore = suggestedSong, distance = distance };
         }
 
         //Filter the active score, we check first for the score having a match with origin songs, then if the score has a Score Value (liked songs will not have this but should be kept).
@@ -110,14 +134,17 @@ namespace Actions
             //Return false if song is not in the list of songs we are looking for.
             if (!data.originSongIDs.Contains(originSongCandidateID)) return false;
 
-            //Score validation check, we need to fail only if the song is not unplayed (0 value), and is outside the given limits. Single lining this is prone to errors.
-            double playerSongValue = data.suggestSM.PlayerScoreValue(originSongCandidate.songID);
-            bool invalidScore = true;
-            if (playerSongValue == 0) invalidScore = false;
-            if ((originSongCandidate.pp < (playerSongValue * data.betterAccCap)) && (originSongCandidate.pp > (playerSongValue * data.worseAccCap))) invalidScore = false;
-            if (invalidScore) return false; //Other checks could be later, hence the return for this section.
+            //**TEST** Keep all links, distance is done later
+            return true;
 
-            return true; //All checks passed
+            ////Score validation check, we need to fail only if the song is not unplayed (0 value), and is outside the given limits. Single lining this is prone to errors.
+            //double playerSongValue = data.suggestSM.PlayerScoreValue(originSongCandidate.songID);
+            //bool invalidScore = true;
+            //if (playerSongValue == 0) invalidScore = false;
+            //if ((originSongCandidate.pp < (playerSongValue * data.betterAccCap)) && (originSongCandidate.pp > (playerSongValue * data.worseAccCap))) invalidScore = false;
+            //if (invalidScore) return false; //Other checks could be later, hence the return for this section.
+
+            //return true; //All checks passed
         }
     }
 }

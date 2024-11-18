@@ -11,7 +11,7 @@ namespace LinkedData
         public Top10kScore originSongScore { get; set; }
         public Top10kScore targetSongScore { get; set; }
         private int strength;
-        private double distance;
+        public double distance;
         private bool unsetStrength = true;
         private bool unsetDistance = true;
 

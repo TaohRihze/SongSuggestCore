@@ -12,11 +12,6 @@ using System.Collections.Generic;
 using Data;
 using PlayerScores;
 using System.Linq;
-using ScoreSabersJson;
-using Curve;
-using System.Runtime.CompilerServices;
-using System.Drawing;
-using System.Runtime.InteropServices.ComTypes;
 using PlaylistNS;
 
 namespace SongSuggestNS
@@ -82,6 +77,7 @@ namespace SongSuggestNS
             filesMeta = fileHandler.LoadFilesMeta();
 
             status = "Checking loaded data for new Online Files";
+
             //Validate file versions and checks for new data.
             ValidateCacheFiles();
 
@@ -108,6 +104,7 @@ namespace SongSuggestNS
             lastSuggestions.Load();
 
             status = "Preparing Link Data";
+
             //Load Link Data
             scoreSaberScoreBoard = new Top10kPlayers { songSuggest = this };
             scoreSaberScoreBoard.FormatName = "Score Saber";
