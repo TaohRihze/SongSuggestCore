@@ -27,9 +27,8 @@ namespace Settings
         public double WorseAccCap { get; set; } = 0.7;
         public LeaderboardType Leaderboard { get; set; } = LeaderboardType.ScoreSaber;
         public int OriginSongCount { get; set; } = 50;
+        public SongCategory AccSaberPlaylistCategories { get; set; } = SongCategory.AccSaberStandard | SongCategory.AccSaberTrue | SongCategory.AccSaberTech;
         public FilterSettings FilterSettings { get; set; }
         public PlaylistSettings PlaylistSettings { get; set; }
-        public SongCategory AccSaberPlaylistCategories { get; set; } = SongCategory.AccSaberStandard | SongCategory.AccSaberTrue | SongCategory.AccSaberTech;
-
     }
 }

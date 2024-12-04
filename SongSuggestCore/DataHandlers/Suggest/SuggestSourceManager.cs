@@ -41,6 +41,20 @@ namespace Actions
             return songSuggest.activePlayer.GetAccuracy(songID);
         }
 
+        //Compares the players score on the song to the highest known score on the song, returns 0 if song is unknown
+        public double PlayerRelativeScoreValue(SongID songID)
+        {
+            double playerScore = songSuggest.activePlayer.GetRatedScore(songID, leaderboardType);
+            string songString = GetStringID(songID);
+            //Try to lookup the value of the songs max if known, else 0 is used
+            //(should filter out the song as a candidate, which is good, we want candidates that can link to plays).
+            double leaderboardMax = Leaderboard().top10kSongMeta.TryGetValue(songString, out var songMeta)
+                ? songMeta.maxScore
+                : 0;
+            double relativeScore = leaderboardMax != 0 ? playerScore / leaderboardMax : 0;
+            return relativeScore;
+        }
+
         //Returns the Time of when a score was set.
         internal DateTime PlayerScoreDate(SongID songID)
         {
@@ -77,6 +91,20 @@ namespace Actions
 
             //Unknown handling detected
             throw new InvalidOperationException($"Unknown CalculatedScore Source found: {leaderboardType}");
+        }
+
+        internal string GetStringID (SongID songID)
+        {
+            switch (leaderboardType)
+            {
+                case LeaderboardType.ScoreSaber:
+                    return songID.GetSong().scoreSaberID;
+                case LeaderboardType.AccSaber:
+                    return songID.GetSong().scoreSaberID;
+                case LeaderboardType.BeatLeader:
+                    return songID.GetSong().beatLeaderID;
+            }
+            throw new InvalidOperationException($"Unknown ScoreBoardTopPlays Source found: {leaderboardType}");
         }
 
         internal int GetRank(SongID songID)

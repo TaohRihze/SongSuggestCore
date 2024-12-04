@@ -469,7 +469,7 @@ namespace SongSuggestNS
 
                 var songs = webDownloader.GetBeatLeaderRankedSongs(filesMeta.beatLeaderLeaderboardUpdated);
                 var standardSongs = songs
-                    .Where(c => c.mode == "Standard")
+                    .Where(c => c.mode == "Standard" || c.mode == "OneSaber")
                     .ToList();
 
                 foreach (var song in standardSongs)

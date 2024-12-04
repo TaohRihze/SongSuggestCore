@@ -21,9 +21,6 @@ namespace Settings
 
         public int ignorePlayedDaysAbove { get; set; } = int.MaxValue;
         public int ignorePlayedDaysBelow { get; set; } = 0;
-
-        public PlaylistSettings playlistSettings {get;set;}
-
         public SongCategory playedSongCategories { get; set; } = SongCategory.ScoreSaber;
         public SongCategory unplayedSongCategories { get; set; } = 0;
 
@@ -40,5 +37,7 @@ namespace Settings
         public bool reversePlaylistOrdering { get; set; } = false;
         //Takes priority over reverse playlist ordering
         public bool randomizePlaylistOrdering { get; set; } = false;
+        public PlaylistSettings playlistSettings { get; set; }
+
     }
 }

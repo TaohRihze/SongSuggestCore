@@ -58,6 +58,7 @@ namespace SongLibraryNS
             {
                 hash = song.hash.ToUpperInvariant(),
                 difficulty = Song.GetDifficultyValue(song.difficulty),
+                characteristic = song.mode,
                 name = song.name
             };
 
@@ -219,6 +220,7 @@ namespace SongLibraryNS
         }
 
         //Returns the ID of a known song, or search web.
+        [Obsolete("Should also include characteristic")]
         public SongID GetID(string hash, String difficulty)
         {
             Song foundSong = null;

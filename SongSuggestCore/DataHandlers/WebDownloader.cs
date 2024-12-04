@@ -197,11 +197,12 @@ namespace WebDownloading
             {
                 _BeatLeaderThrottler.Call();
                 //https://api.beatleader.xyz/score/76561197993806676/6F316D488C43288F3079407829C1028A5E998EBC/ExpertPlus/Standard
-                String playerID = songSuggest.activePlayerID;
-                String songHash = songID.GetSong().hash;// songSuggest.songLibrary.GetHash(songID);
-                String songDifcName = songID.GetSong().GetDifficultyText();//songSuggest.songLibrary.GetDifficultyName(songID);
-                string webString = $"https://api.beatleader.xyz/score/{playerID}/{songHash}/{songDifcName}/Standard";
-                String songInfo = client.DownloadString(webString);
+                string playerID = songSuggest.activePlayerID;
+                string songHash = songID.GetSong().hash;// songSuggest.songLibrary.GetHash(songID);
+                string songDifcName = songID.GetSong().GetDifficultyText();//songSuggest.songLibrary.GetDifficultyName(songID);
+                string songCharacteristic = songID.GetSong().characteristic;
+                string webString = $"https://api.beatleader.xyz/score/{playerID}/{songHash}/{songDifcName}/{songCharacteristic}";
+                string songInfo = client.DownloadString(webString);
                 return JsonConvert.DeserializeObject<BeatLeaderJson.Score>(songInfo, serializerSettings);
             }
             catch
@@ -345,7 +346,29 @@ namespace WebDownloading
             {
                 _BeatLeaderThrottler.Call();
                 //https://api.beatleader.xyz/songsuggest/
+                //String songInfo = client.DownloadString("https://api.beatleader.xyz/songsuggest/?leaderboardContext=general");
+                //String songInfo = client.DownloadString("https://api.beatleader.xyz/songsuggest/?leaderboardContext=noMods");
                 String songInfo = client.DownloadString("https://api.beatleader.xyz/songsuggest/");
+                return JsonConvert.DeserializeObject<List<Top10kPlayer>>(songInfo, serializerSettings);
+            }
+            catch
+            {
+                songSuggest.log?.WriteLine("Error finding BeatLeader Leaderboard");
+            }
+            return new List<Top10kPlayer>();
+        }
+
+        //Beatleader Leaderboard
+        public List<Top10kPlayer> GetBeatLeaderLeaderboard(string mode)
+        {
+            try
+            {
+                _BeatLeaderThrottler.Call();
+                //https://api.beatleader.xyz/songsuggest/
+                //String songInfo = client.DownloadString("https://api.beatleader.xyz/songsuggest/?leaderboardContext=general");
+                //String songInfo = client.DownloadString("https://api.beatleader.xyz/songsuggest/?leaderboardContext=noMods");
+                String request = $"https://api.beatleader.xyz/songsuggest/?leaderboardContext={mode}";
+                String songInfo = client.DownloadString(request);
                 return JsonConvert.DeserializeObject<List<Top10kPlayer>>(songInfo, serializerSettings);
             }
             catch

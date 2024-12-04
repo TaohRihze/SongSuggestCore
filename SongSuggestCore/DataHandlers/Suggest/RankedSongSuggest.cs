@@ -345,12 +345,13 @@ namespace Actions
 
                 //Get the songs by 
                 filteredSongs = filteredSongs
-                    .Take(valueSongCount)                                       //Grab 75% best of scores
-                    .Take(originSongsCount + extraSongsCount)                   //Grab up to the portion that is default cap before acc sorting
-                    .OrderByDescending(c => suggestSM.PlayerAccuracyValue(c))   //Sort by acc
-                    .Take(accSongCount)                                         //Grab the goal of acc related songs (relevant if less than originSongsCount should be kept to keep a matching % removed instead)
-                    .Take(originSongsCount)                                     //Reduce the with acc selection to originSongsCount best acc songs (default reduction so worst acc is removed)   
-                    .OrderByDescending(c => suggestSM.PlayerScoreValue(c))      //Reorder back to Score Value (relevant only if player got other prioritised songs like Liked songs before reducing suggest list at higher levels)
+                    .Take(valueSongCount)                                           //Grab 75% best of scores
+                    .Take(originSongsCount + extraSongsCount)                       //Grab up to the portion that is default cap before acc sorting
+                    //.OrderByDescending(c => suggestSM.PlayerAccuracyValue(c))       //Sort by acc
+                    .OrderByDescending(c => suggestSM.PlayerRelativeScoreValue(c))  //Sort by best Relative Scores (to top score on song) Should find songs you have done comparative best on.
+                    .Take(accSongCount)                                             //Grab the goal of acc related songs (relevant if less than originSongsCount should be kept to keep a matching % removed instead)
+                    .Take(originSongsCount)                                         //Reduce the with acc selection to originSongsCount best acc songs (default reduction so worst acc is removed)   
+                    .OrderByDescending(c => suggestSM.PlayerScoreValue(c))          //Reorder back to Score Value (relevant only if player got other prioritised songs like Liked songs before reducing suggest list at higher levels)
                     .ToList();
             }
 
