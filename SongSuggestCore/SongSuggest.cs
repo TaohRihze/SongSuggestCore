@@ -497,7 +497,8 @@ namespace SongSuggestNS
         //Downloads newest Leaderboard
         private void RefreshBeatLeaderLeaderBoard()
         {
-            var beatLeaderPlayerList = webDownloader.GetBeatLeaderLeaderboard();
+            //var beatLeaderPlayerList = webDownloader.GetBeatLeaderLeaderboard();
+            var beatLeaderPlayerList = webDownloader.GetBeatLeaderLeaderboard("noMods");
 
             //Pruning of recieved data. Hopefully this is temporary and filtering can be moved to server side.
             //Removal of mismatching players
@@ -524,7 +525,7 @@ namespace SongSuggestNS
             long targetPoint = ((DateTimeOffset)DateTime.UtcNow.AddYears(-1)).ToUnixTimeSeconds();
             foreach (var player in beatLeaderPlayerList)
             {
-                if (player.top10kScore.Count < 20)
+                if (player.top10kScore.Count < 30)//20)
                 {
                     fewScores++;
                     Console.WriteLine($"Player:{player.name}({player.id}) Rank: {player.rank} Scores: {player.top10kScore.Count}");
@@ -541,7 +542,58 @@ namespace SongSuggestNS
             if (CoreSettings.FilterScoreSaberBiasInBeatLeader) removeScoreSaberOnlyScoresFromBeatLeaderLeaderBoard = true;
 
             //Save the pruned file
-            fileHandler.SaveScoreBoard(beatLeaderPlayerList, "BeatLeaderLeaderboard");
+            CreateComparativeBestLeaderboard(beatLeaderPlayerList, "BeatLeaderLeaderboard");
+            //fileHandler.SaveScoreBoard(beatLeaderPlayerList, "BeatLeaderLeaderboard");
+        }
+
+        //Goes through a list of downloaded playerscores with their best 30 scores, and reduce it to the top 20 comparative best scores in the batch, and saves them on disk.
+        //This should make searching these scores provide more maps (any map played in top 30 will be in the list, as it the 100% best score on that map), and the data
+        //Will highlight what a player does best, allowing for selections better find niche skillsets.
+        public void CreateComparativeBestLeaderboard(List<Top10kPlayer> top10kPlayers, string fileName)
+        {
+            log?.WriteLine($"Comparative Best: {top10kPlayers.Count()} Players, {top10kPlayers.First().top10kScore.Count()}songs");
+            Top10kPlayers best30 = new Top10kPlayers()
+            {
+                songSuggest = this,
+            };
+            best30.top10kPlayers = top10kPlayers;
+            //Generate meta data on top 30 scores, which allows for lookup of what the max score is on a map by the string ID of the map. (No Song Library needed)
+            best30.GenerateTop10kSongMeta();
+
+            //Reduce each players scores from 30 to 20 (could be any other number than 30, 20 could be softcoded as a parameter if it proves useful
+            foreach (var person in best30.top10kPlayers)
+            {
+
+                //Order by their comparative best scores, and reduce their selection to 20 songs
+                person.top10kScore = person.top10kScore
+                    .OrderByDescending(c => ComparativeBest(c.songID, c.pp))
+                    .Take(20)
+                    .OrderByDescending(c => c.pp)
+                    .ToList();
+
+                //Ranks are still in top 30, so the stored value needs updated to their new top 20 value. Could be considered moved to the load function instead to maintain correct ranks
+                //and at the same time avoid having to save this value (derived from PP value).
+                person.top10kScore = person.top10kScore
+                    //Transform current object into a new with an updated rank by its index.
+                    .Select((c, index) =>
+                    {
+                        c.rank = index+1; //Ranks starts at 1, index value is 0 indexed.
+                        return c;
+                    })
+                    .ToList();
+            }
+            log?.WriteLine($"Comparative Best: {top10kPlayers.Count()} Players, {top10kPlayers.First().top10kScore.Count()}songs");
+
+            //Saves the updated top 20's with the provided name (for later loading in setup).
+            best30.Save(fileName);
+
+            //Looks at a players score vs best score in the batch, and returns the %'age of that.
+            double ComparativeBest(string songID, double playersScore)
+            {
+                double bestScore = best30.top10kSongMeta[songID].maxScore;
+                double comparativeValue = playersScore / bestScore;
+                return comparativeValue;
+            }
         }
 
         //Remove Players with ScoreSaberOnly Scores on BL. This is unlikely at "random" play (1-10% chance depending on how you look at it) so we remove
