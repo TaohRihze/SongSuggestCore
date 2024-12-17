@@ -284,9 +284,17 @@ namespace SongSuggestNS
 
         //Support Functions for RankPlate
         //Get the placement of a specific song in last RankedSongSuggest, "" if not given a rank.
+        [Obsolete("Should Include Characteristic")]
         public string GetSongRanking(string hash, string difficulty)
         {
-            SongID songID = songLibrary.GetID(hash, difficulty);
+            return GetSongRanking("Standard", difficulty, hash);
+        }
+
+        //Support Functions for RankPlate
+        //Get the placement of a specific song in last RankedSongSuggest, "" if not given a rank.
+        public string GetSongRanking(string characteristic, string difficulty, string hash)
+        {
+            SongID songID = songLibrary.GetID(characteristic, difficulty, hash);
             return lastSuggestions.GetRank(songID);
         }
 

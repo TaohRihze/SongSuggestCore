@@ -189,7 +189,6 @@ namespace Actions
 
             //All players needed are parsed, lets reduce and save the list as 20 entries, and get them saved
             songSuggest.CreateComparativeBestLeaderboard(approved10kPlayers, "Top10KPlayers");
-            songSuggest.CreateComparativeBestLeaderboard(approved10kPlayers, "Top10KPlayers2");
 
             //Songlibrary needs saved if any new songs was found
             if (songLibrary.Updated) songLibrary.Save();

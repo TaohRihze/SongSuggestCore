@@ -5,7 +5,7 @@
         // Abstract property to represent the prefix
         abstract public string Prefix { get; }
         public string Value;
-        public string UniqueString => $"{Prefix}{Value}".ToUpperInvariant();
+        public string UniqueID => $"{Prefix}{Value}".ToUpperInvariant();
 
         protected Song _cachedSong;
 
@@ -16,6 +16,12 @@
             //Return cached song. If no song is cached attempt to retrieve it from the library, store value and return found value (can still be null if unknown in Library).
             return _cachedSong ?? (_cachedSong = SongLibrary.SongIDToSong(this));
             //return SongLibrary.SongIDToSong(this);
+        }
+
+        //For the Song Library to set the primary song in the _cachedSong
+        internal void SetSong(Song song)
+        {
+            _cachedSong = song;
         }
 
         public SongID(string value)
@@ -32,7 +38,7 @@
             {
                 if (this.Prefix == songID.Prefix)
                 {
-                    return this.UniqueString == songID.UniqueString;
+                    return this.UniqueID == songID.UniqueID;
                 }
                 return GetSong() == songID.GetSong();
                 
@@ -64,11 +70,18 @@
     }
 
     //ID in the internal format (Generated automatic from a Song object based on Hash, Difficulty, Characteristic)
+    //Offers a Static get UID as well for SongLibrary
     public class InternalID : SongID
     {
         public override string Prefix => "ID";                                                              //Unique Prefix for the ID
         //public static implicit operator InternalID(string value) => new InternalID { Value = value };       //Creation from String
         public static implicit operator InternalID(string value) => (InternalID)SongLibrary.StringIDToSongID(value, SongIDType.Internal);       //Creation from String
+
+        //For Song Library to get the UID string for a given song.
+        internal static string GetUID(string ID)
+        {
+            return $"ID{ID}".ToUpperInvariant();
+        }
     }
 
     //BeatLeader SongID

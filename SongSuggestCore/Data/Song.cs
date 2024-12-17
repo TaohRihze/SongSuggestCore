@@ -17,7 +17,7 @@ namespace SongLibraryNS
             {
                 if (_cachedInternalID == null)
                 {
-                    _cachedInternalID = $"{characteristic}-{difficulty}-{hash}".ToUpperInvariant();
+                    _cachedInternalID = Song.GetInternalID(characteristic, difficulty, hash);//$"{characteristic}-{difficulty}-{hash}".ToUpperInvariant();
                 }
 
                 return _cachedInternalID;
@@ -73,7 +73,7 @@ namespace SongLibraryNS
             }
         }
 
-
+        //Translates difficulty values and text to Text
         public static String GetDifficultyText(string difficultyValue)
         {
             switch (difficultyValue)
@@ -88,11 +88,24 @@ namespace SongLibraryNS
                     return "Expert";
                 case "9":
                     return "ExpertPlus";
-                default:
+                case "Easy":
                     return "Easy";
+                case "Normal":
+                    return "Normal";
+                case "Hard":
+                    return "Hard";
+                case "Expert":
+                    return "Expert";
+                case "ExpertPlus":
+                    return "ExpertPlus";
+                case "Expert+":
+                    return "ExpertPlus";
+                default:
+                    throw new Exception("Unknown Difficulty");
             }
         }
 
+        //Translates difficulty values and text to Values
         public static string GetDifficultyValue(string difficultyText)
         {
             switch (difficultyText)
@@ -109,9 +122,25 @@ namespace SongLibraryNS
                     return "9";
                 case "Expert+":
                     return "9";
-                default:
+                case "1":
                     return "1";
+                case "3":
+                    return "3";
+                case "5":
+                    return "5";
+                case "7":
+                    return "7";
+                case "9":
+                    return "9";
+                default:
+                    throw new Exception("Unknown Difficulty");
             }
+        }
+
+        //Difficulty will be returned as integer in internal ID's regardless of used external difficulty.
+        public static string GetInternalID(string characteristic, string difficulty, string hash)
+        {
+            return $"{characteristic}-{Song.GetDifficultyValue(difficulty)}-{hash}".ToUpperInvariant();
         }
     }
 }
