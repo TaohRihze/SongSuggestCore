@@ -5,17 +5,12 @@ using System.Collections.Generic;
 using System.Linq;
 using BeatLeaderJson;
 using Actions;
-using System.Runtime.CompilerServices;
+
 namespace SongLibraryNS
 {
     //Data on a specific Song Library.
     public class SongLibraryInstance
     {
-        //Statics
-        //public static SongLibraryInstance ActiveLibrary { get; set; }
-        //public static Dictionary<string, Song> Songs => ActiveLibrary?.songs ?? throw new InvalidOperationException("No Library Assigned");
-        //public static bool Compare(SongID id1, SongID id2) { return ActiveLibrary.songs[id1.UniqueString] == ActiveLibrary.songs[id2.UniqueString]; }
-
         //Dynamics
         public SongSuggest songSuggest { get; set; }
         public const String FormatVersion = "2.0";
@@ -28,7 +23,7 @@ namespace SongLibraryNS
         //For 1.37- client backward compatibility
         //Also delete adding stuff in Link Creation once songs is removed, marked in comments there.
         [Obsolete("Use UIDStringToSong instead")]
-        //public Dictionary<string, Song> songs => UIDStringToSong;
+
         public Dictionary<string, Song> songs = new Dictionary<string, Song>();
         public Dictionary<string, SongID> UIDStringToSongID = new Dictionary<string, SongID>();
         public Dictionary<string, Song> UIDStringToSong = new Dictionary<string, Song>();
@@ -175,7 +170,6 @@ namespace SongLibraryNS
         #endregion
 
         #region GetSongDetails (future work to avoid direct manipulation of the Songs (as format may be changed between versions))
-
         public string GetName(SongID songID)
         {
             if (!UIDStringToSong.TryGetValue(songID.UniqueID, out Song song)) return "-Unknown Song-";
@@ -211,8 +205,6 @@ namespace SongLibraryNS
         {
             return GetID("Standard", difficulty, hash);
         }
-
-
 
         // Returns a valid SongID for the given parameters. Creates a new Song entry and returns its InternalID link if necessary.
         public SongID GetID(string characteristic, string difficulty, string hash)
@@ -498,35 +490,39 @@ namespace SongLibraryNS
             return internalID;
         }
 
-        //Conversion of a StringID to a wanted SongIDType if known
+
+        //Used in SongID implicit creation. So should always return an object. Try and return cached version if one is available.
+        //Unknown ID creation should be supported.
         public SongID StringIDToSongID(string stringID, SongIDType songIDType)
         {
             _songIDRequest++;
 
             //Create a new ID of the given type to ensure correct InternalID can be used for cache lookup
             string songIDstring;
+
             SongID songID;
+
+            //Generate an ID on the given value
             switch (songIDType)
             {
                 case SongIDType.Internal:
                     songID = new InternalID() { Value = stringID };
-                    songIDstring = songID.UniqueID;
                     break;
                 case SongIDType.ScoreSaber:
-                    songIDstring = new ScoreSaberID() { Value = stringID }.UniqueID;
+                    songID = new ScoreSaberID() { Value = stringID };
                     break;
                 case SongIDType.BeatLeader:
-                    songIDstring = new BeatLeaderID() { Value = stringID }.UniqueID;
+                    songID = new BeatLeaderID() { Value = stringID };
                     break;
                 default:
                     throw new InvalidOperationException("Unhandled SongIDType used");
             }
 
-            // Retrieve cached version if available.
-            if (UIDStringToSongID.TryGetValue(songIDstring, out SongID foundSongID)) return foundSongID;
-
-            //Nothing was found.
-            return null;
+            //Update to cached version if available.
+            songIDstring = songID.UniqueID;
+            if (UIDStringToSongID.TryGetValue(songIDstring, out SongID foundSongID)) songID = foundSongID;
+                
+            return songID;
         }
 
         public void ShowCache()
