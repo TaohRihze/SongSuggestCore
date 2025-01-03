@@ -1,6 +1,7 @@
 ﻿using SongSuggestNS;
 using System;
 using System.Collections.Generic;
+using Actions;
 
 namespace SongLibraryNS
 {
@@ -16,7 +17,8 @@ namespace SongLibraryNS
         public static SongID StringIDToSongID(string stringID, SongIDType songIDType) { return _activeLibrary.StringIDToSongID(stringID, songIDType); }
         public static List<SongID> StringIDToSongID(List<string> stringIDs, SongIDType songIDType) { return _activeLibrary.StringIDToSongID(stringIDs, songIDType); }
         public static bool HasAnySongCategory(SongID songID, SongCategory songCategory) { return _activeLibrary.HasAnySongCategory(songID, songCategory); }
-        public static String GetDisplayName(SongID songID) { return _activeLibrary.GetDisplayName(songID); }
+        public static string GetDisplayName(SongID songID) { return _activeLibrary.GetDisplayName(songID); }
+        public static double GetMaxRating(LeaderboardType leaderboardType) { return _activeLibrary.GetMaxRating(leaderboardType); }
         public static List<SongID> GetAllRankedSongIDs(SongCategory songCategory) { return _activeLibrary.GetAllRankedSongIDs(songCategory); }
         //Should only be activated by a SongLibraryInstance's SetAsActiveLibrary();
         internal static void SetAsActiveLibrary(SongLibraryInstance songLibrary)

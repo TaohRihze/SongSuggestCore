@@ -28,6 +28,7 @@
         {
             Value = value;
         }
+
         public static implicit operator string(SongID id) => id.Value;
 
         //Allow comparison between songID objects.

@@ -56,7 +56,7 @@ namespace PlayerScores
         private void AddToGroupedScores(PlayerScore score)
         {
             //Add the score to both groupedScores and scoreCollection
-            var songID = (SongID)(InternalID)score.SongID;
+            var songID = SongSuggest.MainInstance.songLibrary.UpsertInternalIDString(score.SongID);
             List<PlayerScore> scores;
 
             //Either assign scores a known songID link, or create a new grouping and assign it to scores and dictionary

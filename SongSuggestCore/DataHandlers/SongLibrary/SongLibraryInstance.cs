@@ -4,10 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BeatLeaderJson;
-using FileHandling;
-using System.Xml.Linq;
-using PlaylistJson;
-
+using Actions;
+using System.Runtime.CompilerServices;
 namespace SongLibraryNS
 {
     //Data on a specific Song Library.
@@ -51,6 +49,8 @@ namespace SongLibraryNS
             }
         }
 
+        #region Upserts
+
         //UpsertSong via ID Object
         //**Change to work with any SongID object
         public SongID UpsertSong(ScoreSaberID songID)
@@ -59,8 +59,27 @@ namespace SongLibraryNS
             return UpsertSong(leaderboardInfo);
         }
 
+        //Creates a new song from given ID, if the string is a legal internalIDString
+        public SongID UpsertInternalIDString(string internalIDString)
+        {
+            if (string.IsNullOrEmpty(internalIDString)) return null;
+
+            //We expect there to be 3 parts in the format characteristic, difficulty, hash ... we try and split, and work on the assumption inputs are correct.
+            var parts = internalIDString.Split('-');
+            if (parts.Length == 3)
+            {
+
+                string characteristic = parts[0];
+                string difficulty = parts[1];
+                string hash = parts[2];
+
+                return UpsertSong(characteristic, difficulty, hash);
+            }
+            return null;
+        }
+
         //Base Creation
-        //Creates and adds an empty song to the requested ID
+        //Creates and adds an empty song to the requested ID if not created already.
         public SongID UpsertSong(string characteristic, string difficulty, string hash)
         {
             //Find the song if known, and return it, else create a new and have it linked
@@ -153,59 +172,38 @@ namespace SongLibraryNS
         {
             return UpsertSong(song.leaderboard);
         }
+        #endregion
 
-        //Works for now, rework later to only use actual Instance data, not general Instas data
+        #region GetSongDetails (future work to avoid direct manipulation of the Songs (as format may be changed between versions))
+
         public string GetName(SongID songID)
         {
-            string name = songID.GetSong()?.name ?? ""; 
-            return name;
+            if (!UIDStringToSong.TryGetValue(songID.UniqueID, out Song song)) return "-Unknown Song-";
+            return song.name;
         }
 
         public String GetDisplayName(SongID songID)
         {
-            try
-            {
-                Song song = UIDStringToSong[songID.UniqueID];
+            if (!UIDStringToSong.TryGetValue(songID.UniqueID, out Song song)) return "-Unknown Song-";
 
-                //Create the default ID and use a specific ID based on called class type
-                string songIDString = song.internalID;
-                if (songID is BeatLeaderID) songIDString = song.beatLeaderID;
-                if (songID is ScoreSaberID) songIDString = song.scoreSaberID;
+            //Create the default ID and use a specific ID based on called class type
+            string songIDString = song.internalID;
+            if (songID is BeatLeaderID) songIDString = song.beatLeaderID;
+            if (songID is ScoreSaberID) songIDString = song.scoreSaberID;
 
-                return $"{song.name} ({song.characteristic} - {song.GetDifficultyText()} - {songIDString})";
-            }
-            //Song is not in library
-            catch
-            {
-                return "";
-            }
+            return $"{song.name} ({song.characteristic} - {song.GetDifficultyText()} - {songIDString})";
         }
 
         public String GetHash(SongID songID)
         {
-            try
-            {
-                return UIDStringToSong[songID.UniqueID].hash;
-            }
-            //Song is not in library
-            catch
-            {
-                return "";
-            }
+            if (!UIDStringToSong.TryGetValue(songID.UniqueID, out Song song)) return "";
+            return song.hash;
         }
 
         public String GetDifficultyName(SongID songID)
         {
-            try
-            {
-                return UIDStringToSong[songID.UniqueID].GetDifficultyText();
-            }
-            //Song is not in library
-            catch
-            {
-                return "";
-
-            }
+            if (!UIDStringToSong.TryGetValue(songID.UniqueID, out Song song)) return "";
+            return song.GetDifficultyText();
         }
         
         [Obsolete("Should also include characteristic")]
@@ -252,29 +250,18 @@ namespace SongLibraryNS
             return (string.IsNullOrEmpty(idText)) ? null : idText;
         }
 
-        public void GetScoreSaberSongInfo(String hash, String difficultyValue)
+        public void GetScoreSaberSongInfo(string hash, string difficultyValue)
         {
             UpsertSong(songSuggest.webDownloader.GetLeaderboardInfo(hash, difficultyValue));
             Save();
         }
 
-        public void GetScoreSaberSongInfo(String scoreSaberID)
+        public void GetScoreSaberSongInfo(string scoreSaberID)
         {
             UpsertSong(songSuggest.webDownloader.GetLeaderboardInfo(scoreSaberID));
             Save();
         }
-
-        //Checks if a song is in the Library
-        public Boolean Contains(String hash, String difficulty)
-        {
-            Boolean foundSong = false;
-            //Try and find the songs information and return if it was in the library.
-            foreach (Song song in UIDStringToSong.Values)
-            {
-                if (song.hash.ToUpperInvariant() == hash.ToUpperInvariant() && song.difficulty == GetDifficultyValue(difficulty)) foundSong = true;
-            }
-            return foundSong;
-        }
+        #endregion
 
         //Removes songs that are not actively linked to a supported format
         //**Temporary Workaround, also removes songs without a ScoreSaber ID**
@@ -349,6 +336,9 @@ namespace SongLibraryNS
         public void SetLibrary(List<Song> songs)
         {
             this.UIDStringToSong.Clear();
+            this.UIDStringToSongID.Clear();
+            //TMP remove once songs is removed.
+            this.songs.Clear();
             foreach (Song song in songs)
             {
                 SetLibraryLink(song);
@@ -363,7 +353,7 @@ namespace SongLibraryNS
 
 
         //Returns True/False if the song is recorded with an active SongCategory
-        public bool HasAnySongCategory(String hash, String difficulty)
+        public bool HasAnySongCategory(string hash, string difficulty)
         {
             return HasAnySongCategory(GetID(hash, difficulty));
         }
@@ -405,7 +395,7 @@ namespace SongLibraryNS
             return returnSongs;
         }
 
-        //Returns the song or null if not found.
+        //Convert the strings to a SongID, and returns related record (if any)
         public Song StringIDToSong(string stringID, SongIDType songIDType)
         {
             SongID songID;
@@ -423,6 +413,7 @@ namespace SongLibraryNS
                 default:
                     throw new InvalidOperationException("Unhandled SongIDType used");
             }
+
             return SongIDToSong(songID);
         }
 
@@ -455,6 +446,8 @@ namespace SongLibraryNS
             //Clear the libraries and reset links
             UIDStringToSong.Clear();
             UIDStringToSongID.Clear();
+            //**Delete once removed**
+            songs.Clear();
             foreach (var song in tempSongs)
             {
                 SetLibraryLink(song);
@@ -472,8 +465,8 @@ namespace SongLibraryNS
         //Sets all ID links for a specific Song (And prepares the primary songlink)
         public InternalID SetLibraryLink(Song song)
         {
-            InternalID internalID = (InternalID)song.internalID;
-            internalID.SetSong(song);
+            string internalIDString = Song.GetInternalID(song.characteristic, song.difficulty, song.hash);
+            InternalID internalID = new InternalID { Value = internalIDString };
             string uniqueInternalIDString = internalID.UniqueID;
             UIDStringToSong[uniqueInternalIDString] = song;
             //Remove later
@@ -482,7 +475,7 @@ namespace SongLibraryNS
 
             if (!string.IsNullOrEmpty(song.scoreSaberID))
             {
-                ScoreSaberID scoreSaberID = (ScoreSaberID)song.scoreSaberID;
+                ScoreSaberID scoreSaberID = new ScoreSaberID { Value = song.scoreSaberID };
                 scoreSaberID.SetSong(song);
                 string uniqueScoreSaberIDString = scoreSaberID.UniqueID;
                 UIDStringToSong[uniqueScoreSaberIDString] = song;
@@ -493,7 +486,7 @@ namespace SongLibraryNS
 
             if (!string.IsNullOrEmpty(song.beatLeaderID))
             {
-                BeatLeaderID beatLeaderID = (BeatLeaderID)song.beatLeaderID;
+                BeatLeaderID beatLeaderID = new BeatLeaderID { Value = song.beatLeaderID };
                 beatLeaderID.SetSong(song);
                 string uniqueBeatLeaderIDString = beatLeaderID.UniqueID;
                 UIDStringToSong[uniqueBeatLeaderIDString] = song;
@@ -505,36 +498,35 @@ namespace SongLibraryNS
             return internalID;
         }
 
-        //Conversion of a String ID to a wanted SongIDType
+        //Conversion of a StringID to a wanted SongIDType if known
         public SongID StringIDToSongID(string stringID, SongIDType songIDType)
         {
             _songIDRequest++;
 
             //Create a new ID of the given type to ensure correct InternalID can be used for cache lookup
+            string songIDstring;
             SongID songID;
             switch (songIDType)
             {
                 case SongIDType.Internal:
-                    songID = new InternalID() {Value = stringID};
+                    songID = new InternalID() { Value = stringID };
+                    songIDstring = songID.UniqueID;
                     break;
                 case SongIDType.ScoreSaber:
-                    songID = new ScoreSaberID() { Value = stringID };
+                    songIDstring = new ScoreSaberID() { Value = stringID }.UniqueID;
                     break;
                 case SongIDType.BeatLeader:
-                    songID = new BeatLeaderID() { Value = stringID };
+                    songIDstring = new BeatLeaderID() { Value = stringID }.UniqueID;
                     break;
                 default:
                     throw new InvalidOperationException("Unhandled SongIDType used");
             }
 
-            // Retrieve cached version if available. (else current new item is kept)
-            if (UIDStringToSongID.TryGetValue(songID.UniqueID, out SongID foundSong))
-                songID = foundSong;
+            // Retrieve cached version if available.
+            if (UIDStringToSongID.TryGetValue(songIDstring, out SongID foundSongID)) return foundSongID;
 
-            // Assign/Reassign correct value to Cache. This could be part of above if's else path, but cost should be same by always doing this.
-            UIDStringToSongID[songID.UniqueID] = songID;
-
-            return songID;
+            //Nothing was found.
+            return null;
         }
 
         public void ShowCache()
@@ -593,14 +585,20 @@ namespace SongLibraryNS
             }
         }
 
-        ////Compares 2 SongID's if they are referencing the same object. Returns false if either object is missing.
-        //internal bool Compare(SongID id1, SongID id2)
-        //{
-        //    Song song1;
-        //    Song song2;   
-        //    if (!songs.TryGetValue(id1.UniqueString, out song1)) return false;
-        //    if (!songs.TryGetValue(id2.UniqueString, out song2)) return false;
-        //    return song1 == song2;
-        //}
+        //Returns the Max "Star" Rating of a given Leaderboard. If unknown leaderboard, "default" is 15 stars, as that seems to match all used boards for now.
+        internal double GetMaxRating(LeaderboardType leaderboardType)
+        {
+            switch(leaderboardType)
+            {
+                case LeaderboardType.ScoreSaber:
+                    return UIDStringToSong.Values.Max(c => c.starScoreSaber);
+                case LeaderboardType.AccSaber:
+                    return UIDStringToSong.Values.Max(c => c.complexityAccSaber);
+                case LeaderboardType.BeatLeader:
+                    return UIDStringToSong.Values.Max(c => c.starBeatLeader);
+            }
+
+            return 15;
+        }
     }
 }

@@ -130,14 +130,17 @@ namespace SongSuggestNS
             status = "Ready";
         }
 
+        //**BUG** If song is not found, and empty object is requested, giving possible empty object.
         private List<SongBan> UpdateOldRecords(List<SongBan> songBans)
         {
             //Find the songID's without a hyphen and update them to internal (they are old ScoreSaber IDs)
             foreach (var songBan in songBans.Where(c => !c.songID.Contains("-")))
             {
-                songBan.songID = SongLibrary.StringIDToSong(songBan.songID, SongIDType.ScoreSaber).internalID;
+                Song song = ((ScoreSaberID)songBan.songID).GetSong();
+                songBan.songID = song.internalID;
             }
 
+            //Try and set missing ban names for later if missing.
             foreach (var songBan in songBans.Where(c => string.IsNullOrEmpty(c.songName)))
             {
                 SongID songID = (InternalID)songBan.songID;
@@ -147,6 +150,7 @@ namespace SongSuggestNS
             return songBans;
         }
 
+        //**BUG** If song is not found, and empty object is requested, giving possible empty object.
         private List<SongLike> UpdateOldRecords(List<SongLike> songLikes)
         {
             //Find the songID's without a hyphen and update them to internal (they are old ScoreSaber IDs)
@@ -198,6 +202,11 @@ namespace SongSuggestNS
             catch
             {
             }
+        }
+
+        public void SetUserID(string userID)
+        {
+            CoreSettings.UserID = userID;
         }
 
         public void GenerateSongSuggestions(SongSuggestSettings settings)
