@@ -44,7 +44,7 @@ namespace Actions
         Stopwatch timer = new Stopwatch();
 
         //List for songs selected as Origin.
-        List<SongID> originSongIDs;
+        public List<SongID> originSongIDs;
         List<SongID> ignoreSongs;
 
         //The two collections of endpoints of the Origin and Target songs from 10k player data based on Active Players data.

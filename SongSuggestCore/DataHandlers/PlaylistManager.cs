@@ -103,10 +103,17 @@ namespace PlaylistNS
             {
                 foreach (var difficulty in (JArray)song["difficulties"])
                 {
-                    if ((string)difficulty["characteristic"] == "Standard")
-                    {
-                        songIDs.Add(SongLibrary.GetID((string)song["hash"], (string)difficulty["name"]));
-                    }
+                    string characteristic = (string)difficulty["characteristic"];
+                    string dif = (string)difficulty["name"];
+                    string hash = (string)song["hash"];
+
+                    SongID songID = SongLibrary.GetID(characteristic, dif, hash);
+                    songIDs.Add(songID);
+
+                    //if ((string)difficulty["characteristic"] == "Standard")
+                    //{
+                    //    songIDs.Add(SongLibrary.GetID((string)song["hash"], (string)difficulty["name"]));
+                    //}
                 }
             }
         }
@@ -124,10 +131,17 @@ namespace PlaylistNS
             {
                 foreach (var difficulty in song.difficulties)
                 {
-                    if (difficulty.characteristic == "Standard")
-                    {
-                        songIDs.Add(SongLibrary.GetID(song.hash, difficulty.name));
-                    }
+                    string characteristic = difficulty.characteristic;
+                    string dif = difficulty.name;
+                    string hash = song.hash;
+
+                    SongID songID = SongLibrary.GetID(characteristic, dif, hash);
+                    songIDs.Add(songID);
+
+                    //if (difficulty.characteristic == "Standard")
+                    //{
+                    //    songIDs.Add(SongLibrary.GetID(song.hash, difficulty.name));
+                    //}
                 }
             }
         }

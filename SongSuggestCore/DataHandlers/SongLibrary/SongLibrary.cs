@@ -10,7 +10,8 @@ namespace SongLibraryNS
     {
         private static SongLibraryInstance _activeLibrary;
         public static Dictionary<string, Song> Songs => _activeLibrary?.UIDStringToSong ?? throw new InvalidOperationException("No Library Assigned");
-        public static SongID GetID(string hash, String difficulty) { return _activeLibrary.GetID(hash, difficulty); }
+        public static SongID GetID(string hash, string difficulty) { return _activeLibrary.GetID(hash, difficulty); }
+        public static SongID GetID(string characteristic, string difficulty, string hash) { return _activeLibrary.GetID(characteristic, difficulty, hash); }
         public static Song SongIDToSong(SongID songID) { return _activeLibrary.SongIDToSong(songID); }
         public static Song StringIDToSong(string songID, SongIDType songIDType) { return _activeLibrary.StringIDToSong(songID, songIDType); }
         public static List<Song> SongIDToSong(List<SongID> songIDs) { return _activeLibrary.SongIDToSong(songIDs); }

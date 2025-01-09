@@ -76,7 +76,9 @@ namespace SongLibraryNS
         //Translates difficulty values and text to Text
         public static String GetDifficultyText(string difficultyValue)
         {
-            switch (difficultyValue)
+            string lowerDifficultyValue = difficultyValue.ToLowerInvariant();
+
+            switch (lowerDifficultyValue)
             {
                 case "1":
                     return "Easy";
@@ -88,17 +90,17 @@ namespace SongLibraryNS
                     return "Expert";
                 case "9":
                     return "ExpertPlus";
-                case "Easy":
+                case "easy":
                     return "Easy";
-                case "Normal":
+                case "normal":
                     return "Normal";
-                case "Hard":
+                case "hard":
                     return "Hard";
-                case "Expert":
+                case "expert":
                     return "Expert";
-                case "ExpertPlus":
+                case "expertplus":
                     return "ExpertPlus";
-                case "Expert+":
+                case "expert+":
                     return "ExpertPlus";
                 default:
                     throw new Exception("Unknown Difficulty");
@@ -108,19 +110,21 @@ namespace SongLibraryNS
         //Translates difficulty values and text to Values
         public static string GetDifficultyValue(string difficultyText)
         {
-            switch (difficultyText)
+            string lowerDifficultyValue = difficultyText.ToLowerInvariant();
+
+            switch (lowerDifficultyValue)
             {
-                case "Easy":
+                case "easy":
                     return "1";
-                case "Normal":
+                case "normal":
                     return "3";
-                case "Hard":
+                case "hard":
                     return "5";
-                case "Expert":
+                case "expert":
                     return "7";
-                case "ExpertPlus":
+                case "expertplus":
                     return "9";
-                case "Expert+":
+                case "expert+":
                     return "9";
                 case "1":
                     return "1";
