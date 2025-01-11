@@ -46,6 +46,7 @@ namespace SongSuggestNS
 
         //Boolean set to true if the quality of the found songs was not high enough
         //e.g. Had to remove the betterAcc and/or songs was missing from generating originSongsCount suggestions.
+        [Obsolete("Should no longer need to be checked, as we remove a %'age of worst links instead.")]
         public Boolean lowQualitySuggestions { get; set; } = false;
 
         //Log Details Target (null means it is off), else set the writer here.

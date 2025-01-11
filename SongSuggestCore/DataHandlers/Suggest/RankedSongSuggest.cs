@@ -238,7 +238,8 @@ namespace Actions
         {
             betterAccCap = double.MaxValue;
             worseAccCap = 0;
-            songSuggest.lowQualitySuggestions = true;
+            //Should no longer be needed as quality is handled by removing a % of links.
+            //songSuggest.lowQualitySuggestions = true;
 
             //Find all songs in the leaderboard with at least a minimum of records amount, and sort them by Max Score, so easiest is first
             var fillerSongs = suggestSM.Leaderboard().top10kSongMeta
