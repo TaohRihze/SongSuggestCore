@@ -173,6 +173,9 @@ namespace SongSuggestNS
             activePlayer.ActiveScoreLocations.Clear();
             if (CoreSettings.UseScoreSaberLeaderboard || CoreSettings.UseAccSaberLeaderboard) activePlayer.ActiveScoreLocations.Add(ScoreLocation.ScoreSaber);
             if (CoreSettings.UseBeatLeaderLeaderboard) activePlayer.ActiveScoreLocations.Add(ScoreLocation.BeatLeader);
+            
+            //Session Scores should always be active.
+            activePlayer.ActiveScoreLocations.Add(ScoreLocation.SessionScores);
         }
 
         //Validate CacheFiles and download new versions if available.
@@ -254,16 +257,24 @@ namespace SongSuggestNS
         public void AddLocalScore(string hash, string difficulty, double accuracy)
         {
             log?.WriteLine($"hash: {hash} difficulty: {difficulty} accuracy {accuracy} received");
-            SongID songID = songLibrary.GetID(hash, difficulty);
-            AddLocalScore(songID, accuracy);
+            SongID songID = songLibrary.GetID("Standard",difficulty,hash);
+            AddLocalScore(songID, accuracy, "");
         }
 
         LocalPlayerScoreManager localScores => (LocalPlayerScoreManager)activePlayer.GetScoreLocation(ScoreLocation.LocalScores);
+        SessionScoreManager sessionScores => (SessionScoreManager)activePlayer.GetScoreLocation(ScoreLocation.SessionScores);
 
-        public void AddLocalScore(SongID songID, double accuracy)
+        public void AddLocalScore(SongID songID, double accuracy, string modifiers)
         {
-            localScores.AddScore(songID, accuracy);
+            //log?.WriteLine($"Local Score Modifiers: {modifiers}");
+            localScores.AddScore(songID, accuracy, modifiers);
             if (localScores.updated) localScores.Save();
+        }
+        
+        public void AddSessionScore(SongID songID, double accuracy, string modifiers)
+        {
+            //log?.WriteLine($"Session Score Modifiers: {modifiers}");
+            sessionScores.AddScore(songID, accuracy, modifiers);
         }
 
         //Makes sure the active players data is updated (Load Cache, Reset Cache if needed, Download new data from web).
@@ -293,18 +304,28 @@ namespace SongSuggestNS
         }
 
         //Support Functions for RankPlate
+
         //Get the placement of a specific song in last RankedSongSuggest, "" if not given a rank.
-        [Obsolete("Should Include Characteristic")]
+        //Can be removed when 1.38+ is default.
+        [Obsolete("Use SongID version, get SongID from SongLibrary")]
         public string GetSongRanking(string hash, string difficulty)
         {
-            return GetSongRanking("Standard", difficulty, hash);
+            SongID songID = songLibrary.GetID("Standard", difficulty, hash);
+            return GetSongRanking(songID);
         }
 
-        //Support Functions for RankPlate
         //Get the placement of a specific song in last RankedSongSuggest, "" if not given a rank.
+        //Can be removed when 1.38+ is default.
+        [Obsolete("Use SongID version, get SongID from SongLibrary")]
         public string GetSongRanking(string characteristic, string difficulty, string hash)
         {
             SongID songID = songLibrary.GetID(characteristic, difficulty, hash);
+            return GetSongRanking(songID);
+        }
+
+        //Get the placement of a specific song in last RankedSongSuggest, "" if not given a rank.
+        public string GetSongRanking(SongID songID)
+        {
             return lastSuggestions.GetRank(songID);
         }
 
@@ -314,13 +335,21 @@ namespace SongSuggestNS
             return lastSuggestions.GetRankCount();
         }
 
+        //Can be removed when 1.38+ is default.
+        [Obsolete("Use SongID version, get SongID from SongLibrary")]
         public string GetAPString(string hash, string difficulty)
         {
-            var songID = songLibrary.GetID(hash, difficulty);
+            SongID songID = songLibrary.GetID("Standard", difficulty,hash);
+            return GetAPString(songID);
+        }
 
+        public string GetAPString(SongID songID)
+        {
             //Add Local Scores if needed
             bool localScoresPresent = activePlayer.ActiveScoreLocations.Contains(ScoreLocation.LocalScores);
             if (!localScoresPresent) activePlayer.ActiveScoreLocations.Add(ScoreLocation.LocalScores);
+            //Should always be active
+            if (!activePlayer.ActiveScoreLocations.Contains(ScoreLocation.SessionScores)) activePlayer.ActiveScoreLocations.Add(ScoreLocation.SessionScores);
 
             var AP = activePlayer.GetRatedScore(songID, LeaderboardType.AccSaber);
 
@@ -328,8 +357,6 @@ namespace SongSuggestNS
             if (!localScoresPresent) activePlayer.ActiveScoreLocations.Remove(ScoreLocation.LocalScores);
 
             return AP == 0 ? "" : $"{AP:0.00}AP";
-
-
         }
 
 

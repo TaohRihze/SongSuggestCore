@@ -11,10 +11,10 @@ namespace LinkedData
     public class Top10kPlayers
     {
         public const String FormatVersion = "1.0";
-        public SongSuggest songSuggest {get;set;}
+        public SongSuggest songSuggest { get; set; }
         public String FormatName { get; set; }
         public List<Top10kPlayer> top10kPlayers = new List<Top10kPlayer>();
-        public SortedDictionary<String,Top10kSongMeta> top10kSongMeta = new SortedDictionary<String,Top10kSongMeta>();
+        public SortedDictionary<String, Top10kSongMeta> top10kSongMeta = new SortedDictionary<String, Top10kSongMeta>();
 
         public void Save()
         {
@@ -30,6 +30,18 @@ namespace LinkedData
         {
             top10kPlayers = songSuggest.fileHandler.LoadScoreBoard(scoreBoardName);
             GenerateTop10kSongMeta();
+            SetParentLinks();
+        }
+
+        public void SetParentLinks()
+        {
+            foreach (var parent in top10kPlayers)
+            {
+                foreach (var song in parent.top10kScore)
+                {
+                    song.parent = parent;
+                }
+            }
         }
 
         public void GenerateTop10kSongMeta()

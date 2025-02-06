@@ -3,7 +3,8 @@
     public enum ScoreLocation
     {
         ScoreSaber,
+        BeatLeader,
         LocalScores,
-        BeatLeader
+        SessionScores,
     }
 }

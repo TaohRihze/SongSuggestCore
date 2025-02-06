@@ -66,7 +66,8 @@ namespace Actions
                 SongID targetSongID = SongLibrary.StringIDToSongID(item.link.targetSongScore.songID, data.suggestSM.LeaderboardSongIDType());
                 if (!targetSongs.endPoints.ContainsKey(targetSongID))
                 {
-                    targetSongs.endPoints.Add(targetSongID, new SongEndPoint { songID = targetSongID });
+                    var endPoint = new SongEndPoint { songID = targetSongID };
+                    targetSongs.endPoints.Add(targetSongID, endPoint);
                 }
 
                 //Add the songlink to the target list
@@ -113,16 +114,13 @@ namespace Actions
                 //Testing showed this distribution gives a good split between harder/easier songs for ordering. Would have expected 4.0 as it matched older system more with
                 //Default 70% kept links for normal songs ... for Acc Saber this needs reduced.
                 distance = Math.Abs(Math.Pow(suggestedSong.pp / originSong.pp, 3.0) - 1);
-
-                //distance = Math.Abs(Math.Log(originSong.pp / suggestedSong.pp));
-                ////Reduce impact if suggested song is from stronger player
-                //if (originSong.pp < suggestedSong.pp) distance = distance * 2.1;
             }
                 
                 
 
 
-            return new SongLink() { playerID = player.id, originSongScore = originSong, targetSongScore = suggestedSong, distance = distance };
+            var songLink = new SongLink() { playerID = player.id, originSongScore = originSong, targetSongScore = suggestedSong, distance = distance };
+            return songLink;
         }
 
         //Filter the active score, we check first for the score having a match with origin songs, then if the score has a Score Value (liked songs will not have this but should be kept).

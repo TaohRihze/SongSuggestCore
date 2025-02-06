@@ -26,36 +26,59 @@ namespace BanLike
             return bannedSongs.Where(p => p.expire == DateTime.MaxValue).Select(p => (SongID)(InternalID)p.songID).Distinct().ToList();
         }
 
-        public Boolean IsBanned(String songHash, String difficulty)
+        [Obsolete("Use Song ID Version")]
+        public bool IsBanned(string songHash, string difficulty)
         {
-            SongID songID = SongLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID("Standard", difficulty, songHash);
             return IsBanned(songID);
         }
-        public Boolean IsBanned(SongID songID)
+
+        [Obsolete("Use Song ID Version")]
+        public bool IsBanned(string characteristic, string difficulty, string songHash)
+        {
+            SongID songID = SongLibrary.GetID(characteristic, difficulty, songHash);
+            return IsBanned(songID);
+        }
+        public bool IsBanned(SongID songID)
         {
             return IsBanned(songID, BanType.Global);
         }
-        public Boolean IsBanned(SongID songID, BanType banType)
+        public bool IsBanned(SongID songID, BanType banType)
         {
             return bannedSongs.Any(p => p.songID == songID.GetSong().internalID && p.expire > DateTime.UtcNow && p.banType == banType);
         }
 
-        public Boolean IsPermaBanned(String songHash, String difficulty)
+        [Obsolete("Use Song ID Version")]
+        public bool IsPermaBanned(string songHash, string difficulty)
         {
-            return IsPermaBanned(SongLibrary.GetID(songHash, difficulty));
+            SongID songID = SongLibrary.GetID("Standard", difficulty, songHash);
+            return IsPermaBanned(songID);
         }
-        public Boolean IsPermaBanned(SongID songID)
+        [Obsolete("Use Song ID Version")]
+        public bool IsPermaBanned(string characteristic, string difficulty, string songHash)
+        {
+            SongID songID = SongLibrary.GetID(characteristic, difficulty, songHash);
+            return IsPermaBanned(songID);
+        }
+        public bool IsPermaBanned(SongID songID)
         {
             return IsPermaBanned(songID, BanType.Global);
         }
-        public Boolean IsPermaBanned(SongID songID, BanType banType)
+        public bool IsPermaBanned(SongID songID, BanType banType)
         {
             return bannedSongs.Any(p => p.songID == songID.GetSong().internalID && p.expire == DateTime.MaxValue && p.banType == banType);
         }
 
-        public void LiftBan(String songHash, String difficulty)
+        [Obsolete("Use Song ID Version")]
+        public void LiftBan(string songHash, string difficulty)
         {
-            SongID songID = SongLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID("Standard", difficulty, songHash);
+            LiftBan(songID);
+        }
+        [Obsolete("Use Song ID Version")]
+        public void LiftBan(string characteristic, string difficulty, string songHash)
+        {
+            SongID songID = SongLibrary.GetID(characteristic, difficulty, songHash);
             LiftBan(songID);
         }
 
@@ -70,9 +93,16 @@ namespace BanLike
             Save();
         }
 
-        public void SetBan(String songHash, String difficulty, int days)
+        [Obsolete("Use Song ID Version")]
+        public void SetBan(string songHash, string difficulty, int days)
         {
-            SongID songID = SongLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID("Standard", difficulty, songHash);
+            SetBan(songID, days);
+        }
+        [Obsolete("Use Song ID Version")]
+        public void SetBan(string characteristic, string difficulty, string songHash, int days)
+        {
+            SongID songID = SongLibrary.GetID(characteristic, difficulty, songHash);
             SetBan(songID, days);
         }
 
@@ -92,9 +122,16 @@ namespace BanLike
             Save();
         }
 
-        public void SetPermaBan(String songHash, String difficulty)
+        [Obsolete("Use Song ID Version")]
+        public void SetPermaBan(string songHash, string difficulty)
         {
-            SongID songID = SongLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID("Standard", difficulty, songHash);
+            SetPermaBan(songID);
+        }
+        [Obsolete("Use Song ID Version")]
+        public void SetPermaBan(string characteristic, string difficulty, string songHash)
+        {
+            SongID songID = SongLibrary.GetID(characteristic, difficulty, songHash);
             SetPermaBan(songID);
         }
         public void SetPermaBan(SongID songID)

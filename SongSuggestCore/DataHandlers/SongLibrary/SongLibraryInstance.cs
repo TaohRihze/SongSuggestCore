@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using BeatLeaderJson;
 using Actions;
+using PlaylistJson;
 
 namespace SongLibraryNS
 {
@@ -345,10 +346,17 @@ namespace SongLibraryNS
 
 
         //Returns True/False if the song is recorded with an active SongCategory
+        [Obsolete("Use Song ID Version")]
         public bool HasAnySongCategory(string hash, string difficulty)
         {
             return HasAnySongCategory(GetID(hash, difficulty));
         }
+
+        ////Returns True/False if the song is recorded with an active SongCategory
+        //public bool HasAnySongCategory(string hash, string difficulty)
+        //{
+        //    return HasAnySongCategory(GetID(hash, difficulty));
+        //}
 
         public bool HasAllSongCategory(string songID, SongCategory category)
         {
@@ -363,6 +371,7 @@ namespace SongLibraryNS
             if (!UIDStringToSong.ContainsKey(songID.UniqueID)) return false;
             return (UIDStringToSong[songID.UniqueID].songCategory & category) == category;
         }
+
 
         public bool HasAnySongCategory(SongID songID, SongCategory category)
         {

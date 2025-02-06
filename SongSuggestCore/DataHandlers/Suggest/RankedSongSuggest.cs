@@ -52,8 +52,8 @@ namespace Actions
         //Origin = (10k player) Songs that match Active Players Songs
         //Target = Suggested Songs linked from Origin (within a single 10k player, 1 origin -> 19 target links of other top 20 songs.)
         //Only needs recalculation if Originsongs change, or the player improves a top originSongsCount score (less filtered betterAccCap suggestions).
-        SongEndPointCollection originSongs;
-        SongEndPointCollection targetSongs;
+        public SongEndPointCollection originSongs;
+        public SongEndPointCollection targetSongs;
 
         //Amount of songlinks for good results. Less and we can try and remove the better/worse limits and evaluate the results.
         //Removing bad results, and just add default results to fill the list to make sure there is results for the playlist.
@@ -263,22 +263,18 @@ namespace Actions
             //Find most relevant songs for playlist selection
             songSuggest.status = "Selecting Best Matching Songs";
 
-            ////Filter on PP value compared to users songs PP values
-            //distanceFilterOrdered = targetSongs.endPoints.Values.OrderByDescending(s => s.weightedRelevanceScore).Select(p => p.songID).ToList();
 
             //Filter on how much over/under linked a song is in the active players data vs the global player population
             styleFilterOrdered = targetSongs.endPoints.Values.OrderBy(s => (0.0 + suggestSM.Leaderboard().top10kSongMeta[s.songID].count) / (0.0 + s.proportionalStyle)).Select(p => p.songID).ToList();
-            //Old bias for more suggestions from highly linked songs.
-            //styleFilterOrdered = targetSongs.endPoints.Values.OrderBy(s => (0.0 + top10kPlayers.top10kSongMeta[s.songID].count) / (0.0 + s.songLinks.Count())).Select(p => p.songID).ToList();
 
             //Filter on how the selected songs rank are better than average
             overWeightFilterOrdered = targetSongs.endPoints.Values.OrderBy(s => s.averageRank).Select(p => p.songID).ToList();
 
-            //***test
             //Filter on what the expected PP would be on a song.
-            ppFilterOrdered = targetSongs.endPoints.Values.OrderByDescending(s => s.estimatedPP).Select(p => p.songID).ToList();
+            //ppFilterOrdered = targetSongs.endPoints.Values.OrderByDescending(s => s.estimatedPP).Select(p => p.songID).ToList();
+
             //Filter on which PP is strongest in Local vs Global
-            ppLocalVSGlobalOrdered = targetSongs.endPoints.Values.OrderByDescending(s => s.localVSGlobalPP).Select(p => p.songID).ToList();
+            //ppLocalVSGlobalOrdered = targetSongs.endPoints.Values.OrderByDescending(s => s.localVSGlobalPP).Select(p => p.songID).ToList();
         }
 
         //Goal here is to get a good sample of a players songs that are not banned. The goal is try and find originSongsCount candidates to represent a player.

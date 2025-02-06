@@ -17,6 +17,7 @@ namespace SongLibraryNS
         public static List<Song> SongIDToSong(List<SongID> songIDs) { return _activeLibrary.SongIDToSong(songIDs); }
         public static SongID StringIDToSongID(string stringID, SongIDType songIDType) { return _activeLibrary.StringIDToSongID(stringID, songIDType); }
         public static List<SongID> StringIDToSongID(List<string> stringIDs, SongIDType songIDType) { return _activeLibrary.StringIDToSongID(stringIDs, songIDType); }
+        [Obsolete("Include Characteristic")]
         public static bool HasAnySongCategory(SongID songID, SongCategory songCategory) { return _activeLibrary.HasAnySongCategory(songID, songCategory); }
         public static string GetDisplayName(SongID songID) { return _activeLibrary.GetDisplayName(songID); }
         public static double GetMaxRating(LeaderboardType leaderboardType) { return _activeLibrary.GetMaxRating(leaderboardType); }

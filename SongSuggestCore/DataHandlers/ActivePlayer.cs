@@ -24,6 +24,7 @@ namespace ActivePlayerData
             scores[ScoreLocation.ScoreSaber] = new ScoreSaberPlayerScoreManager() { ActivePlayer = this };
             scores[ScoreLocation.BeatLeader] = new BeatLeaderPlayerScoreManager() { ActivePlayer = this };
             scores[ScoreLocation.LocalScores] = new LocalPlayerScoreManager() { ActivePlayer = this };
+            scores[ScoreLocation.SessionScores] = new SessionScoreManager() { ActivePlayer = this };
         }
 
         //Loads all the cached data on the active player, and clears any that is outdated.

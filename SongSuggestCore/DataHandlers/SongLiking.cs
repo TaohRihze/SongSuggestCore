@@ -18,9 +18,10 @@ namespace BanLike
         }
 
         //Returns true if Liked
+        [Obsolete("Use Song ID Version")]
         public Boolean IsLiked(String songHash, String difficulty)
         {
-            SongID songID = SongLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID("Standard", difficulty, songHash);
             return IsLiked(songID);
         }
 
@@ -29,9 +30,10 @@ namespace BanLike
             return likedSongs.Any(p => p.songID == songID.GetSong().internalID);
         }
 
+        [Obsolete("Use Song ID Version")]
         public void RemoveLike(String songHash, String difficulty)
         {
-            SongID songID = SongLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID("Standard", difficulty, songHash);
             RemoveLike(songID);
         }
         public void RemoveLike(SongID songID)
@@ -40,9 +42,10 @@ namespace BanLike
             Save();
         }
 
+        [Obsolete("Use Song ID Version")]
         public void SetLike(String songHash, String difficulty)
         {
-            SongID songID = SongLibrary.GetID(songHash, difficulty);
+            SongID songID = SongLibrary.GetID("Standard", difficulty, songHash);
             SetLike(songID);
         }
         public void SetLike(SongID songID)

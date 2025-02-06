@@ -13,7 +13,7 @@ namespace PlayerScores
 {
     //Stores and Handles local recorded scores when active.
     //Saves best score on each song since activation
-    public class LocalPlayerScoreManager : IPlayerScores
+    public class SessionScoreManager : IPlayerScores
     {
         public ActivePlayer ActivePlayer { get; set; }
         public SongSuggest songSuggest => ActivePlayer.songSuggest;
@@ -69,34 +69,20 @@ namespace PlayerScores
 
         public void Load()
         {
-            //Load data.
-            scoreCollection = songSuggest.fileHandler.LoadScoreCollection($"Local{ActivePlayer.PlayerID}");
-
             //Clear current stored data (replace with load)
             groupedScores.Clear();
-
-            //Loop each score.
-            foreach (var score in scoreCollection.PlayerScores)
-            {
-                AddToGroupedScores(score);
-            }
         }
 
         public void Save()
         {
+            //We do not save, but update flag to be as if we did.
             if (!updated) return;
-            songSuggest.log?.WriteLine($"Saving Local Scores");
-            scoreCollection.PlayerScores = scoreCollection.PlayerScores.OrderBy(c => c.SongName).ToList();
-            songSuggest.fileHandler.SaveScoreCollection(scoreCollection, $"Local{ActivePlayer.PlayerID}");
             updated = false;
         }
 
         //Local Scores should not be cleared.
         public void Clear()
         {
-            //scoreCollection = new ScoreCollection();
-            //groupedScores.Clear();
-            //Save();
         }
 
         //Yeah we do not refresh.
@@ -189,37 +175,8 @@ namespace PlayerScores
         public void ShowCache(TextWriter log)
         {
 
-            log?.WriteLine($"Local Score Count Grouped: {groupedScores.Count()}");
-            log?.WriteLine($"                           {scoreCollection.PlayerScores.Count()}");
-        }
-
-        //Convert and Add old LocalScores
-        public void ImportOldLocalScores()
-        {
-            var scores = songSuggest.fileHandler.LoadOldLocalScores();
-
-            foreach (var score in scores)
-            {
-                SongID songID = (ScoreSaberID)score.SongID;
-                Song song = songID.GetSong();
-
-                if (song == null) continue;
-
-                score.SongID = song.internalID;
-                score.SongName = song.name;
-
-                //Adds the score to the grouped dataset
-                AddToGroupedScores(score);
-
-                //We add the score to scoreCollection, and mark that we have updated our records.
-                scoreCollection.PlayerScores.Add(score);
-                updated = true;
-            }
-
-            Save();
-
-            //Delete cached file
-            songSuggest.fileHandler.RemoveOldLocalScores();
+            log?.WriteLine($"Session Score Count Grouped: {groupedScores.Count()}");
+            log?.WriteLine($"                             {scoreCollection.PlayerScores.Count()}");
         }
     }
 }
