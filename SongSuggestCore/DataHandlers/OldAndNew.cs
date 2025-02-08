@@ -26,6 +26,10 @@ namespace Actions
             songSuggest.fileHandler.SaveOldAndNewRequest(settings);
             this.settings = settings;
 
+            //Fix for old 0-100 instead of 0-1 request for % (At least for requests in the 1-100% range)
+            if (settings.ignoreAccuracyEqualAbove > 1 && settings.ignoreAccuracyEqualAbove <= 100) settings.ignoreAccuracyEqualAbove = settings.ignoreAccuracyEqualAbove / 100.0;
+            if (settings.ignoreAccuracyEqualBelow > 1 && settings.ignoreAccuracyEqualBelow <= 100) settings.ignoreAccuracyEqualBelow = settings.ignoreAccuracyEqualBelow / 100.0;
+
             //Check if nothing is selected for the SongCategories for both played and unplayed, and if default the selection to active leaderboards played
             if (settings.playedSongCategories == 0 && settings.unplayedSongCategories == 0)
             {

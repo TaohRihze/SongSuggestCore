@@ -18,6 +18,13 @@ namespace SongSuggestNS
 {
     public class SongSuggest
     {
+        //Static Version Info based on a SemVer.
+        private static int _semVerMajor = 2;
+        private static int _semVerMinor = 1;
+        private static int _semVerPatch = 0;
+        public static Version GetCoreVersion() { return new Version(_semVerMajor, _semVerMinor, _semVerPatch); }
+        public static Version MinimumUIVersion() { return new Version(2, 0, 0); }
+
         public double songSuggestCompletion { get => songSuggest?.songSuggestCompletion ?? 1; }
         public static SongSuggest MainInstance { get; set; }
         public static TextWriter Log { get; set; }
