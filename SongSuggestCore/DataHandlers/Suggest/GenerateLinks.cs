@@ -73,6 +73,10 @@ namespace Actions
                 //Add the songlink to the target list
                 targetSongs.endPoints[targetSongID].songLinks.Add(item.link);
 
+                //Update Links endpoints references
+                item.link.OriginScoreEndPoint = originSongs.endPoints[originSongID];
+                item.link.TargetScoreEndPoint = targetSongs.endPoints[targetSongID];
+
                 //Update complete %
                 double localPercentDone = (double)item.index / maxRank;
                 double localGroupStart = 0.44;
@@ -119,7 +123,13 @@ namespace Actions
                 
 
 
-            var songLink = new SongLink() { playerID = player.id, originSongScore = originSong, targetSongScore = suggestedSong, distance = distance };
+            var songLink = new SongLink() 
+            { 
+                playerID = player.id, 
+                originSongScore = originSong, 
+                targetSongScore = suggestedSong, 
+                distance = distance,
+            };
             return songLink;
         }
 

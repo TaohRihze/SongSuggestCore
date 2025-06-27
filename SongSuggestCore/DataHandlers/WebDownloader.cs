@@ -196,12 +196,12 @@ namespace WebDownloading
             try
             {
                 _BeatLeaderThrottler.Call();
-                //https://api.beatleader.xyz/score/76561197993806676/6F316D488C43288F3079407829C1028A5E998EBC/ExpertPlus/Standard
+                //https://api.beatleader.com/score/76561197993806676/6F316D488C43288F3079407829C1028A5E998EBC/ExpertPlus/Standard
                 string playerID = songSuggest.activePlayerID;
                 string songHash = songID.GetSong().hash;// songSuggest.songLibrary.GetHash(songID);
                 string songDifcName = songID.GetSong().GetDifficultyText();//songSuggest.songLibrary.GetDifficultyName(songID);
                 string songCharacteristic = songID.GetSong().characteristic;
-                string webString = $"https://api.beatleader.xyz/score/{playerID}/{songHash}/{songDifcName}/{songCharacteristic}";
+                string webString = $"https://api.beatleader.com/score/{playerID}/{songHash}/{songDifcName}/{songCharacteristic}";
                 string songInfo = client.DownloadString(webString);
                 return JsonConvert.DeserializeObject<BeatLeaderJson.Score>(songInfo, serializerSettings);
             }
@@ -212,14 +212,14 @@ namespace WebDownloading
             return new BeatLeaderJson.Score();
         }
 
-        //https://api.beatleader.xyz/leaderboard/clanRankings/2bf61xx51?page=1&count=1
+        //https://api.beatleader.com/leaderboard/clanRankings/2bf61xx51?page=1&count=1
         //Generic web puller for BeatLeader Clan Leaderboard
         public BeatLeaderJson.LeaderboardClanRankings GetBeatLeaderClanLeaderboard(SongID songID, int page, int count)
         {
             try
             {
                 _BeatLeaderThrottler.Call();
-                //https://api.beatleader.xyz/leaderboard/2bf61xx51?page=1&count=1
+                //https://api.beatleader.com/leaderboard/2bf61xx51?page=1&count=1
                 string beatLeaderLeaderboardID = songID.GetSong().beatLeaderID;
 
                 //This is internal handling as it is data missing in SongLibrary that could have been there, but is not maintained currently, only ranked songs are kept.
@@ -228,7 +228,7 @@ namespace WebDownloading
                     songSuggest.log?.WriteLine("This Clan Leaderboard is not in known Beat Leader data (Ranked Songs Only): " + songID);
                     return new BeatLeaderJson.LeaderboardClanRankings();
                 }
-                string webString = $"https://api.beatleader.xyz/leaderboard/clanRankings/{beatLeaderLeaderboardID}/?page={page}&count={count}";
+                string webString = $"https://api.beatleader.com/leaderboard/clanRankings/{beatLeaderLeaderboardID}/?page={page}&count={count}";
                 String songInfo = client.DownloadString(webString);
                 return JsonConvert.DeserializeObject<BeatLeaderJson.LeaderboardClanRankings>(songInfo, serializerSettings);
             }
@@ -239,14 +239,14 @@ namespace WebDownloading
             return new BeatLeaderJson.LeaderboardClanRankings();
         }
 
-        //https://api.beatleader.xyz/leaderboard/clanRankings/3da61xxxx91/clan/85?page=1&count=5
+        //https://api.beatleader.com/leaderboard/clanRankings/3da61xxxx91/clan/85?page=1&count=5
         //Generic web puller for BeatLeader Specified Clans Leaderboard (by ClanID)
         public BeatLeaderJson.LeaderboardClanRankings GetBeatLeaderClanLeaderboardByID(SongID songID, int clanID, int page, int count)
         {
             try
             {
                 _BeatLeaderThrottler.Call();
-                //https://api.beatleader.xyz/leaderboard/clanRankings/3da61xxxx91/clan/85?page=1&count=5
+                //https://api.beatleader.com/leaderboard/clanRankings/3da61xxxx91/clan/85?page=1&count=5
                 string beatLeaderLeaderboardID = songID.GetSong().beatLeaderID;
 
                 //This is internal handling as it is data missing in SongLibrary that could have been there, but is not maintained currently, only ranked songs are kept.
@@ -255,8 +255,8 @@ namespace WebDownloading
                     songSuggest.log?.WriteLine("This Clan Leaderboard is not in known Beat Leader data (Ranked Songs Only): " + songID);
                     return new BeatLeaderJson.LeaderboardClanRankings();
                 }
-                //https://api.beatleader.xyz/leaderboard/clanRankings/3da61xxxx91/clan/85?page=1&count=5
-                string webString = $"https://api.beatleader.xyz/leaderboard/clanRankings/{beatLeaderLeaderboardID}/clan/{clanID}?page={page}&count={count}";
+                //https://api.beatleader.com/leaderboard/clanRankings/3da61xxxx91/clan/85?page=1&count=5
+                string webString = $"https://api.beatleader.com/leaderboard/clanRankings/{beatLeaderLeaderboardID}/clan/{clanID}?page={page}&count={count}";
                 String songInfo = client.DownloadString(webString);
                 return JsonConvert.DeserializeObject<BeatLeaderJson.LeaderboardClanRankings>(songInfo, serializerSettings);
             }
@@ -274,7 +274,7 @@ namespace WebDownloading
             try
             {
                 _BeatLeaderThrottler.Call();
-                //https://api.beatleader.xyz/leaderboard/2bf61xx51?page=1&count=1
+                //https://api.beatleader.com/leaderboard/2bf61xx51?page=1&count=1
                 string beatLeaderLeaderboardID = songID.GetSong().beatLeaderID;
                 
                 //This is internal handling as it is data missing in SongLibrary that could have been there, but is not maintained currently, only ranked songs are kept.
@@ -283,7 +283,7 @@ namespace WebDownloading
                     songSuggest.log?.WriteLine("This leaderboard is not in known Beat Leader data (Ranked Songs Only): " + songID);
                     return new BeatLeaderJson.Leaderboard();
                 }
-                string webString = $"https://api.beatleader.xyz/leaderboard/{beatLeaderLeaderboardID}/?page={page}&count={count}";
+                string webString = $"https://api.beatleader.com/leaderboard/{beatLeaderLeaderboardID}/?page={page}&count={count}";
                 String songInfo = client.DownloadString(webString);
                 return JsonConvert.DeserializeObject<BeatLeaderJson.Leaderboard>(songInfo, serializerSettings);
             }
@@ -302,9 +302,9 @@ namespace WebDownloading
             {
                 _BeatLeaderThrottler.Call();
                 //We grab oldest scores first, so updates are performed chronological
-                //https://api.beatleader.xyz/player/76561197993806676/scores/compact?sortBy=date&order=1&page=1&count=100&time_from=1700000000
+                //https://api.beatleader.com/player/76561197993806676/scores/compact?sortBy=date&order=1&page=1&count=100&time_from=1700000000
                 if (playerID == "-1") return new ScoresCompact();
-                webString = $"https://api.beatleader.xyz/player/{playerID}/scores/compact?sortBy=pp&order=0&page={page}&count={count}&time_from={fromUnixTimeStamp}";
+                webString = $"https://api.beatleader.com/player/{playerID}/scores/compact?sortBy=pp&order=0&page={page}&count={count}&time_from={fromUnixTimeStamp}";
                 String songInfo = client.DownloadString(webString);
                 return JsonConvert.DeserializeObject<ScoresCompact>(songInfo, serializerSettings);
             }
@@ -324,9 +324,9 @@ namespace WebDownloading
             {
                 _BeatLeaderThrottler.Call();
                 //We grab oldest scores first, so updates are performed chronological
-                //https://api.beatleader.xyz/songsuggest/refreshTime
+                //https://api.beatleader.com/songsuggest/refreshTime
                 String playerID = songSuggest.activePlayerID;
-                webString = $"https://api.beatleader.xyz/songsuggest/refreshTime";
+                webString = $"https://api.beatleader.com/songsuggest/refreshTime";
                 String updated = client.DownloadString(webString);
                 return JsonConvert.DeserializeObject<long>(updated, serializerSettings);
             }
@@ -345,10 +345,10 @@ namespace WebDownloading
             try
             {
                 _BeatLeaderThrottler.Call();
-                //https://api.beatleader.xyz/songsuggest/
-                //String songInfo = client.DownloadString("https://api.beatleader.xyz/songsuggest/?leaderboardContext=general");
-                //String songInfo = client.DownloadString("https://api.beatleader.xyz/songsuggest/?leaderboardContext=noMods");
-                String songInfo = client.DownloadString("https://api.beatleader.xyz/songsuggest/");
+                //https://api.beatleader.com/songsuggest/
+                //String songInfo = client.DownloadString("https://api.beatleader.com/songsuggest/?leaderboardContext=general");
+                //String songInfo = client.DownloadString("https://api.beatleader.com/songsuggest/?leaderboardContext=noMods");
+                String songInfo = client.DownloadString("https://api.beatleader.com/songsuggest/");
                 return JsonConvert.DeserializeObject<List<Top10kPlayer>>(songInfo, serializerSettings);
             }
             catch
@@ -364,10 +364,10 @@ namespace WebDownloading
             try
             {
                 _BeatLeaderThrottler.Call();
-                //https://api.beatleader.xyz/songsuggest/
-                //String songInfo = client.DownloadString("https://api.beatleader.xyz/songsuggest/?leaderboardContext=general");
-                //String songInfo = client.DownloadString("https://api.beatleader.xyz/songsuggest/?leaderboardContext=noMods");
-                String request = $"https://api.beatleader.xyz/songsuggest/?leaderboardContext={mode}";
+                //https://api.beatleader.com/songsuggest/
+                //String songInfo = client.DownloadString("https://api.beatleader.com/songsuggest/?leaderboardContext=general");
+                //String songInfo = client.DownloadString("https://api.beatleader.com/songsuggest/?leaderboardContext=noMods");
+                String request = $"https://api.beatleader.com/songsuggest/?leaderboardContext={mode}";
                 String songInfo = client.DownloadString(request);
                 return JsonConvert.DeserializeObject<List<Top10kPlayer>>(songInfo, serializerSettings);
             }
@@ -387,8 +387,8 @@ namespace WebDownloading
             try
             {
                 _BeatLeaderThrottler.Call();
-                //https://api.beatleader.xyz/songsuggest/songs?after_time=1600000000
-                String songInfo = client.DownloadString($"https://api.beatleader.xyz/songsuggest/songs?after_time={unixTimestamp}");
+                //https://api.beatleader.com/songsuggest/songs?after_time=1600000000
+                String songInfo = client.DownloadString($"https://api.beatleader.com/songsuggest/songs?after_time={unixTimestamp}");
                 return JsonConvert.DeserializeObject<List<BeatLeaderJson.SongSuggestSong>>(songInfo, serializerSettings);
             }
             catch
@@ -404,8 +404,8 @@ namespace WebDownloading
             try
             {
                 _BeatLeaderThrottler.Call();
-                //https://api.beatleader.xyz/clan/genx?page=1&count=100&primary=true
-                string downloadstring = $"https://api.beatleader.xyz/clan/{clanTag}?page={page}&count={count}&primary={primary}";
+                //https://api.beatleader.com/clan/genx?page=1&count=100&primary=true
+                string downloadstring = $"https://api.beatleader.com/clan/{clanTag}?page={page}&count={count}&primary={primary}";
                 String songInfo = client.DownloadString(downloadstring);
                 return JsonConvert.DeserializeObject<BeatLeaderJson.ClanMembersList>(songInfo, serializerSettings);
             }

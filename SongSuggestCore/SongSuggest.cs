@@ -20,8 +20,11 @@ namespace SongSuggestNS
     {
         //Static Version Info based on a SemVer.
         private static int _semVerMajor = 2;
-        private static int _semVerMinor = 1;
-        private static int _semVerPatch = 0;
+        private static int _semVerMinor = 2;
+        private static int _semVerPatch = 2;
+
+        //2.2.1: Test with reduced link requirement from 50 down to 10.
+
         public static Version GetCoreVersion() { return new Version(_semVerMajor, _semVerMinor, _semVerPatch); }
         public static Version MinimumUIVersion() { return new Version(2, 0, 0); }
 

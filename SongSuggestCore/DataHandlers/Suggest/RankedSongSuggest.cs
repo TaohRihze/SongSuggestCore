@@ -8,12 +8,13 @@ using Settings;
 using SongSuggestNS;
 using BanLike;
 using SongLibraryNS;
-using System.Runtime.InteropServices;
 
 namespace Actions
 {
     public partial class RankedSongSuggest
     {
+        public static RankedSongSuggest ActiveRankedSongSuggest;
+
         //Read only object links to data in this class for the calculations
         private DTO dto;
 
@@ -81,8 +82,8 @@ namespace Actions
         public bool useLocalScores => settings.UseLocalScores;
         public int extraSongs => settings.ExtraSongs;
         public int playlistLength => settings.PlaylistLength;
-        public double betterAccCap { get => settings.BetterAccCap; set => settings.BetterAccCap = value; }
-        public double worseAccCap { get => settings.WorseAccCap; set => settings.WorseAccCap = value; }
+        //public double betterAccCap { get => settings.BetterAccCap; set => settings.BetterAccCap = value; }
+        //public double worseAccCap { get => settings.WorseAccCap; set => settings.WorseAccCap = value; }
         public SongCategory accSaberPlaylistCategories => settings.AccSaberPlaylistCategories;
         int originSongsCount => settings.OriginSongCount;
         int extraSongsCount => settings.ExtraSongs;
@@ -93,11 +94,11 @@ namespace Actions
         public List<SongID> styleFilterOrdered;
         public List<SongID> overWeightFilterOrdered;
 
-        //in test        
-        //PP for new distance
-        List<SongID> ppFilterOrdered;
-        //PP local vs Global
-        List<SongID> ppLocalVSGlobalOrdered;
+        ////in test        
+        ////PP for new distance
+        //List<SongID> ppFilterOrdered;
+        ////PP local vs Global
+        //List<SongID> ppLocalVSGlobalOrdered;
 
         //Default constructor, creates the DTO link object that can pull object links from here.
         public RankedSongSuggest()
@@ -121,6 +122,7 @@ namespace Actions
         //Creates a playlist with playlist count suggested songs based on the link system.
         public void SuggestedSongs()
         {
+            ActiveRankedSongSuggest = this;
             //save request
             songSuggest.fileHandler.SaveSongSuggestRequest(settings);
 
@@ -207,6 +209,7 @@ namespace Actions
 
             //Restore ActiveScoreLocations if changed to local
             songSuggest.activePlayer.ActiveScoreLocations = currentActiveScoreLocations;
+            ActiveRankedSongSuggest = null;
 
         }
 
@@ -236,10 +239,9 @@ namespace Actions
         //At the same time we remove limits on all songs
         public List<SongID> GetFillerSongs()
         {
-            betterAccCap = double.MaxValue;
-            worseAccCap = 0;
-            //Should no longer be needed as quality is handled by removing a % of links.
-            //songSuggest.lowQualitySuggestions = true;
+            //We filter a % of scores, so acc caps should not need to be manually set or used.
+            //betterAccCap = double.MaxValue;
+            //worseAccCap = 0;
 
             //Find all songs in the leaderboard with at least a minimum of records amount, and sort them by Max Score, so easiest is first
             var fillerSongs = suggestSM.Leaderboard().top10kSongMeta

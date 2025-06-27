@@ -10,6 +10,7 @@
         Star = 5,
         Complexity = 6,
         WorldRank = 7,
-        WorldPercentage = 8
+        WorldPercentage = 8,
+        Alphabetic = 9,
     }
 }

@@ -5,13 +5,8 @@ using System;
 using System.Collections.Generic;
 using Curve;
 using System.Linq;
-using System.Text;
-using System.Security.Cryptography;
-using System.ComponentModel.Design;
 using SongLibraryNS;
-using WebDownloading;
 using LinkedData;
-using Settings;
 
 namespace AccSaberData
 {

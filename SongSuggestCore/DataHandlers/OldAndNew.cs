@@ -270,6 +270,9 @@ namespace Actions
                 case SongSortCriteria.WorldRank:
                     songs = WorldRank(songs);
                     break;
+                case SongSortCriteria.Alphabetic:
+                    songs = Alphabetic(songs);
+                    break;
             }
             return songs;
         }
@@ -383,6 +386,14 @@ namespace Actions
         {
             return selectedSongs
                 .OrderBy(songID => songSuggest.activePlayer.GetWorldRank(songID, ScoreLocation.ScoreSaber))
+                .ToList();
+        }
+
+        //Sort the selection by World Rank
+        private List<SongID> Alphabetic (List<SongID> selectedSongs)
+        {
+            return selectedSongs
+                .OrderBy(songID => songID.GetSong().name)
                 .ToList();
         }
 
