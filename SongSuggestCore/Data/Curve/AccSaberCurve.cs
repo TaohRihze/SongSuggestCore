@@ -1,4 +1,5 @@
 ﻿using SongLibraryNS;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -99,6 +100,14 @@ namespace Curve
             Song song = SongLibrary.SongIDToSong(songID);
             if (song == null) return 0;
             return AP(accuracy, song.complexityAccSaber);
+        }
+
+        //Rank is 1 indexed, and result is 0-1 range.
+        public static double RankMultiplier(int rank)
+        {
+            const double y1 = 0.1, x1 = 15, k = 0.4;
+            double x0 = -Math.Log((1 - y1) / (y1 * Math.Exp(k * x1) - 1)) / k;
+            return (1 + Math.Exp(-k * x0)) / (1 + Math.Exp(k * (rank - 1 - x0)));
         }
     }
 }

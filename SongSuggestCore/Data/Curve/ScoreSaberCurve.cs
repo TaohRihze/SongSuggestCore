@@ -77,5 +77,6 @@ namespace Curve
             if (accuracy < 0 || accuracy > 1) return 0.0;
             return SecretMultiplier * Multiplier(accuracy) * starRating;
         }
+
     }
 }

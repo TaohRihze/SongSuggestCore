@@ -2,3 +2,9 @@
 
 # CS0659: Type overrides Object.Equals(object o) but does not override Object.GetHashCode()
 dotnet_diagnostic.CS0659.severity = none
+
+# IDE0028: Simplify collection initialization
+dotnet_style_collection_initializer = false
+
+# Default severity for analyzer diagnostics with category 'Style'
+dotnet_analyzer_diagnostic.category-Style.severity = none

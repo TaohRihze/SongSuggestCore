@@ -166,7 +166,7 @@ namespace ActivePlayerData
             {
                 case LeaderboardType.ScoreSaber:
                     return GetLeaderboardRank(songID, leaderboard, SongCategory.ScoreSaber);
-                case LeaderboardType.AccSaber:
+                case LeaderboardType.AccSaber: //Combined Acc Saber Rankings
                     return GetLeaderboardRank(songID, leaderboard, SongCategory.AccSaberStandard | SongCategory.AccSaberTrue | SongCategory.AccSaberTech);
                 case LeaderboardType.BeatLeader:
                     return GetLeaderboardRank(songID, leaderboard, SongCategory.BeatLeader);

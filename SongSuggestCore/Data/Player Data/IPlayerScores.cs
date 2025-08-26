@@ -34,7 +34,6 @@ namespace ActivePlayerData
 
         //Returns the songs score on the Leaderboard (0 if unknown).
         double GetRatedScore(SongID songID, LeaderboardType leaderboardType);
-
         //Returns the Score Object of the given SongID
         PlayerScore GetScore(SongID songID);
 

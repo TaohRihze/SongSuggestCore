@@ -8,6 +8,7 @@ using Settings;
 using SongSuggestNS;
 using BanLike;
 using SongLibraryNS;
+using ScoreSabersJson;
 
 namespace Actions
 {
@@ -63,11 +64,12 @@ namespace Actions
         int linkedSongs = 0;
 
         //Add Filler songs if player has a low amount of source songs
-        int targetFillers = 10;
+        int targetFillers = 50;
         int minPlays = 20;
 
         //Value for how many spots must be expected to be improved before being shown in suggestions (unplayed songs are always shown)
         int improveSpots = 5;
+        int improveSpotsAccSaber = 2;
 
         //Percent of song links to keep (70% seems to work well in general, but acc saber players can use PP Potential slider to adjust this (
         double LinkKeepPercent = 0.7;
@@ -82,8 +84,6 @@ namespace Actions
         public bool useLocalScores => settings.UseLocalScores;
         public int extraSongs => settings.ExtraSongs;
         public int playlistLength => settings.PlaylistLength;
-        //public double betterAccCap { get => settings.BetterAccCap; set => settings.BetterAccCap = value; }
-        //public double worseAccCap { get => settings.WorseAccCap; set => settings.WorseAccCap = value; }
         public SongCategory accSaberPlaylistCategories => settings.AccSaberPlaylistCategories;
         int originSongsCount => settings.OriginSongCount;
         int extraSongsCount => settings.ExtraSongs;
@@ -93,12 +93,6 @@ namespace Actions
         //public List<SongID> distanceFilterOrdered;
         public List<SongID> styleFilterOrdered;
         public List<SongID> overWeightFilterOrdered;
-
-        ////in test        
-        ////PP for new distance
-        //List<SongID> ppFilterOrdered;
-        ////PP local vs Global
-        //List<SongID> ppLocalVSGlobalOrdered;
 
         //Default constructor, creates the DTO link object that can pull object links from here.
         public RankedSongSuggest()
@@ -134,9 +128,8 @@ namespace Actions
                     break;
                 case LeaderboardType.AccSaber:
                     scoreLocation = ScoreLocation.ScoreSaber;
-                    //Workaround to allow slider to be used from UI, may be kept if useful.
-                    LinkKeepPercent = 1.0 - (settings.ExtraSongs / 100.0);
-                    if (LinkKeepPercent < 0.1) LinkKeepPercent = 0.1;
+                    //Temporary Workaround to reset old UI's 25 song count, 50 default seems to work better now.
+                    if (originSongsCount == 25) settings.OriginSongCount = 50;
                     break;
                 case LeaderboardType.BeatLeader:
                     scoreLocation = ScoreLocation.BeatLeader;
@@ -162,9 +155,6 @@ namespace Actions
             }
 
             songSuggest.log?.WriteLine("Starting Song Suggest");
-
-            //Sets the lower quality suggestions to false, different parts of the song evaluations can turn it true.
-            songSuggest.lowQualitySuggestions = false;
 
             songSuggest.log?.WriteLine("Starts the timer");
             timer.Start();
@@ -239,12 +229,16 @@ namespace Actions
         //At the same time we remove limits on all songs
         public List<SongID> GetFillerSongs()
         {
-            //We filter a % of scores, so acc caps should not need to be manually set or used.
-            //betterAccCap = double.MaxValue;
-            //worseAccCap = 0;
-
-            //Find all songs in the leaderboard with at least a minimum of records amount, and sort them by Max Score, so easiest is first
+            //Find all songs in the leaderboard with at least a minimum of records amount, we grab middle of average rank.
+            //As well as decently linked maps
+            //And select the ones with the lowest PP value mathes that (should target lower rank songs).
+            //Needs a better rewrite, but seems slighlty better than previous without middle Average Rank selection, especially for Acc.
+            int middleOfAverageRank = suggestSM.Leaderboard().top10kSongMeta.Count / 4;
+            
             var fillerSongs = suggestSM.Leaderboard().top10kSongMeta
+                .OrderBy(c => c.Value.totalRank / c.Value.count)
+                .Skip(middleOfAverageRank)
+                .Take(middleOfAverageRank*2)
                 .Where(c => c.Value.count >= minPlays)
                 .OrderBy(c => c.Value.maxScore)
                 .Select(c => c.Value.songID)
@@ -271,12 +265,6 @@ namespace Actions
 
             //Filter on how the selected songs rank are better than average
             overWeightFilterOrdered = targetSongs.endPoints.Values.OrderBy(s => s.averageRank).Select(p => p.songID).ToList();
-
-            //Filter on what the expected PP would be on a song.
-            //ppFilterOrdered = targetSongs.endPoints.Values.OrderByDescending(s => s.estimatedPP).Select(p => p.songID).ToList();
-
-            //Filter on which PP is strongest in Local vs Global
-            //ppLocalVSGlobalOrdered = targetSongs.endPoints.Values.OrderByDescending(s => s.localVSGlobalPP).Select(p => p.songID).ToList();
         }
 
         //Goal here is to get a good sample of a players songs that are not banned. The goal is try and find originSongsCount candidates to represent a player.
@@ -289,83 +277,45 @@ namespace Actions
             //Find available songs
             var filteredSongs = suggestSM.PlayerScoresIDs()                                 //Grab songID's for songs matching the given Suggest Context from Source Manager
                 .Where(c => !songSuggest.songBanning.IsPermaBanned(c, BanType.Global))      //Remove Perma Banned Songs
-                .OrderByDescending(value => suggestSM.PlayerScoreValue(value))              //Order Songs by value
+                .OrderByDescending(value => suggestSM.PlayerWeightedScoreValue(value))      //Order Songs by Leaderboards Effective value
                 .ToList();
 
-            //If it is AccSaber leaderboard, filter origin songs if needed
-            if (suggestSM.leaderboardType == LeaderboardType.AccSaber)
-            {
-                //The max spread on Origin Songs (some acc players only focus on a single or two leaderboards, so getting random songs from other leaderboards with low
-                //and or old AP scores makes little sense).
-                double maxSpreadBetweenSongs = 0.8;
+            //To ensure worst songs are always removed (progression while getting enough songs) we only keep a certain percent of songs (75% default)
+            int valueSongCount = filteredSongs.Count();
+            valueSongCount = (int)(maxKeepPercentage * valueSongCount);     //Reduce the list to 75% best
+            if (valueSongCount == 0) valueSongCount = 1;                    //If 1 is available, 1 should always be selected, but outside this goal is to reduce to 75% rounded down
 
+            //Find the target song count after removing accuracy adjustments
+            double percentToKeep = (double)originSongsCount / (originSongsCount + extraSongsCount);
+            int comparativeBestCount = (int)Math.Ceiling(percentToKeep * valueSongCount);
 
-                SongCategory activeCategories = suggestSM.LeaderboardSongCategory();
-
-                int targets = settings.OriginSongCount;                                                 //Target songs to end up with
-                int maxKeep = (int)Math.Ceiling(maxKeepPercentage * filteredSongs.Count);               //Calculate max songs to keep based on plays
-                int adjustedTargets = Math.Min(maxKeep, targets);                                       //Reduces targets if needed.
-                //Counts how many flags are active in the activeCategories defined for Acc Saber (3). This is if there later are similar groupings it can be done without hardcoding.
-                int activeCategoriesCount = Enum.GetValues(typeof(SongCategory))                        //Get all enums as assigned integers
-                    .Cast<SongCategory>()                                                               //Switch them to the enum type
-                    .Count(value => activeCategories.HasFlag(value));                                   //Counts how many times the activeCategories has a matching flag
-                //We round up to ensure enough values to hit our goal, and add the +1 to allows a little bias towards highest scoring groups in selection
-                int groupSamples = ((int)Math.Ceiling((double)targets / activeCategoriesCount)) + 1;    //Calculate samples per active group
-
-
-                // Lets get the sample size from all Acc Saber categories, and then reduce the list if needed.
-                filteredSongs = Enum.GetValues(typeof(SongCategory))                                                                //Get Int values for all SongCategory
-                    .Cast<SongCategory>()                                                                                           //Convert the list to actual enum type
-                    .Where(value => activeCategories.HasFlag(value))                                                                //Reduce list to active groups only
-                    .Select(group => filteredSongs.Where(candidate => songSuggest.songLibrary.HasAllSongCategory(candidate, group)))//Sort candidates into groups based on their enum
-                    .SelectMany(groupCandidates => groupCandidates.Take(groupSamples))                                              //Combine all lists to a single with a max selection
-                    .OrderByDescending(candidate => suggestSM.PlayerScoreValue(candidate))                                          //Order has been changed by groups, so we need to resort
-                    .Take(targets)                                                                                                  //Reduce the list to the found target
-                    .ToList();                                                                                                      //And turn it back into a list for later processing
-
-                //Find the minimum required AP target for a song, or set 0 if no songs was found.
-                double minTargetAP = filteredSongs.Any() ? suggestSM.PlayerScoreValue(filteredSongs.First()) * maxSpreadBetweenSongs : 0;
-
-                //Filter out songs with a worse AP than the target.
-                filteredSongs = filteredSongs.Where(c => suggestSM.PlayerScoreValue(c) > minTargetAP).ToList();
-
-            }
-            //Default selection. (Non Acc Saber)
-            else
-            {
-                //To ensure worst songs are always removed (progression while getting enough songs) we only keep a certain percent of songs (75% default)
-                int valueSongCount = filteredSongs.Count();
-                valueSongCount = (int)(maxKeepPercentage * valueSongCount);     //Reduce the list to 75% best
-                if (valueSongCount == 0) valueSongCount = 1;                    //If 1 is available, 1 should always be selected, but outside this goal is to reduce to 75% rounded down
-
-                //Find the target song count after removing accuracy adjustments
-                double percentToKeep = (double)originSongsCount / (originSongsCount + extraSongsCount);
-                int accSongCount = (int)Math.Ceiling(percentToKeep * valueSongCount);
-
-                //Get the songs by 
-                filteredSongs = filteredSongs
-                    .Take(valueSongCount)                                           //Grab 75% best of scores
-                    .Take(originSongsCount + extraSongsCount)                       //Grab up to the portion that is default cap before acc sorting
-                    //.OrderByDescending(c => suggestSM.PlayerAccuracyValue(c))       //Sort by acc
-                    .OrderByDescending(c => suggestSM.PlayerRelativeScoreValue(c))  //Sort by best Relative Scores (to top score on song) Should find songs you have done comparative best on.
-                    .Take(accSongCount)                                             //Grab the goal of acc related songs (relevant if less than originSongsCount should be kept to keep a matching % removed instead)
-                    .Take(originSongsCount)                                         //Reduce the with acc selection to originSongsCount best acc songs (default reduction so worst acc is removed)   
-                    .OrderByDescending(c => suggestSM.PlayerScoreValue(c))          //Reorder back to Score Value (relevant only if player got other prioritised songs like Liked songs before reducing suggest list at higher levels)
-                    .ToList();
-            }
+            //Get the songs by 
+            filteredSongs = filteredSongs
+                .Take(valueSongCount)                                           //Grab 75% best of scores
+                .Take(originSongsCount + extraSongsCount)                       //Grab up to the portion that is default cap before acc sorting
+                .OrderByDescending(c => suggestSM.PlayerRelativeScoreValue(c))  //Sort by best Relative Scores (to top score on song) Should find songs you have done comparative best on.
+                .Take(comparativeBestCount)                                     //Grab the goal of comparative best songs (relevant if less than originSongsCount should be kept to keep a matching % removed instead)
+                .Take(originSongsCount)                                         //Reduce the with acc selection to originSongsCount comparative best songs (default reduction so comparative worst is removed)   
+                .OrderByDescending(c => suggestSM.PlayerWeightedScoreValue(c))  //Reorder back to Score Value (relevant only if player got other prioritised songs like Liked songs before reducing suggest list at higher levels)
+                .ToList();
 
 
             //Debug code for showing actual selected songs.
             songSuggest.log?.WriteLine("Selected Origin Songs");
-            foreach (var songID in filteredSongs)
+            var potentialSongs = suggestSM.PlayerScoresIDs()                                //Grab songID's for songs matching the given Suggest Context from Source Manager
+                .Where(c => !songSuggest.songBanning.IsPermaBanned(c, BanType.Global))      //Remove Perma Banned Songs
+                .OrderByDescending(value => suggestSM.PlayerWeightedScoreValue(value))      //Order Songs by value
+                .Take(originSongsCount + extraSongsCount)
+                .ToList();
+
+            foreach (var songID in potentialSongs)
             {
-                //if (songSuggest.songLibrary.songs.ContainsKey(songID))
-                //{
-                //var song = songSuggest.songLibrary.songs[songID];
+                var inFiltered = filteredSongs.Contains(songID) ? "X": " ";
                 var song = SongLibrary.SongIDToSong(songID);
                 var songCategory = song.songCategory & suggestSM.LeaderboardSongCategory();
                 var songName = songSuggest.songLibrary.GetDisplayName(songID);
-                songSuggest.log?.WriteLine($"SongCategory: {songCategory,-16}   Score: {suggestSM.PlayerScoreValue(songID),8:N2}    {songName}");
+                var percent = suggestSM.PlayerRelativeScoreValue(songID)*100;
+                songSuggest.log?.WriteLine($"{inFiltered}   SongCategory: {songCategory,-16}   Score: {suggestSM.PlayerScoreValue(songID),8:N2}({suggestSM.PlayerWeightedScoreValue(songID),8:N2})   Advantage%: {percent,6:0.00}%    {songName}");
             }
 
             //Returns the found songs.
@@ -502,67 +452,25 @@ namespace Actions
         {
             List<SongID> ignoreSongs = new List<SongID>();
 
-            //Default Leaderboards
-            if (suggestSM.leaderboardType == LeaderboardType.ScoreSaber || suggestSM.leaderboardType == LeaderboardType.BeatLeader)
+            //As acc saber has more leaderboards, less improvement on the local leaderboard should be needed before shown.
+            if (suggestSM.leaderboardType == LeaderboardType.AccSaber) improveSpots = improveSpotsAccSaber;
+
+            //Create a lookup for ranks of the leaderboards. If multiple leaderboards use the sub leaderboards rank.
+            var scoreToRank = sortedSuggestions
+                .Select(c => new { score = c, Masked = suggestSM.LeaderboardSongCategory() & c.GetSong().songCategory}) //Reduce the SongCategory to Relevant categories only
+                .GroupBy(x => x.Masked)                                                                                 //Group by Category
+                .Select(g => g.Select((x, index) => new { x.score, GroupIndex = index + 1 }))                           //Assign Rank Index in each Category (1-index)
+                .SelectMany(g => g)                                                                                     //Flatten the data so it is only score and index.
+                .ToDictionary(x => x.score, x => x.GroupIndex);                                                         //Create a lookup for songID -> category rank
+
+            foreach (SongID songID in sortedSuggestions)
             {
-                //List<String> activePlayersPPSortedSongs = songSuggest.activePlayer.scores.Values.OrderByDescending(p => p.pp).ToList().Select(p => p.songID).ToList();
-                //var activePlayersPPSortedSongs = suggestSM.PlayerScoresIDs().OrderByDescending(c => suggestSM.PlayerScoreValue(c)).Select(c => c.Value).ToList();
+                int currentSongRank = suggestSM.PlayerScoreRank(songID);
 
-                int suggestedSongRank = 0;
-                foreach (SongID songID in sortedSuggestions)
+                //Add songs ID to ignore list if current rank is not expected improveable by at least X spots, and it is not an unplayed song
+                if (currentSongRank < scoreToRank[songID] + improveSpots && currentSongRank != -1)
                 {
-                    int currentSongRank = suggestSM.GetRank(songID);
-                    //int currentSongRank = activePlayersPPSortedSongs.IndexOf(songID);
-                    //Add songs ID to ignore list if current rank is not expected improveable by at least X spots, and it is not an unplayed song
-                    if (currentSongRank < suggestedSongRank + improveSpots && currentSongRank != -1)
-                    {
-                        ignoreSongs.Add(songID);
-                    }
-                    suggestedSongRank++;
-                }
-            }
-            if (suggestSM.leaderboardType == LeaderboardType.AccSaber)
-            {
-                foreach (SongCategory category in Enum.GetValues(typeof(SongCategory)).Cast<SongCategory>())
-                {
-                    //Skip categories not active.
-                    if (!suggestSM.LeaderboardSongCategory().HasFlag(category)) continue;
-
-                    //Get suggestions for the category
-                    List<SongID> activeSongs = songSuggest.songLibrary.GetAllRankedSongIDs(category);
-                    List<SongID> categorySortedSuggestions = sortedSuggestions
-                                    .Intersect(activeSongs)
-                                    .ToList();
-                    //Get the players scores for the category and order them by best first
-                    List<SongID> categorySortedPlayerScores = suggestSM.PlayerScoresIDs()
-                                    .Where(c => SongLibrary.HasAnySongCategory(c, category))
-                                    .Intersect(activeSongs)
-                                    .OrderByDescending(c => suggestSM.PlayerScoreValue(c))
-                                    .ToList();
-                    //List in both (ones that might be non improveable)
-                    List<SongID> commonSongIDs = categorySortedSuggestions.Intersect(categorySortedPlayerScores).ToList();
-
-                    //As we have 3 lists, improvespots should be made smaller
-                    int adjustedImproveSpots = (int)Math.Ceiling((double)improveSpots / 3);
-
-                    // Create the ignoreList by filtering commonSongIDs based on how many spots a song is set to be improveable before added.
-
-                    List<SongID> categoryIgnoreSongs = commonSongIDs
-                        .Where(song => categorySortedPlayerScores.IndexOf(song) - categorySortedSuggestions.IndexOf(song) < adjustedImproveSpots)
-                         .ToList();
-
-                    ignoreSongs.AddRange(categoryIgnoreSongs);
-
-                    //Non improveable Log.
-                    songSuggest.log?.WriteLine($"Song Category: {category}");
-                    foreach (var song in categoryIgnoreSongs)
-                    {
-                        int playerRank = categorySortedPlayerScores.IndexOf(song) + 1;
-                        int suggestRank = categorySortedSuggestions.IndexOf(song) + 1;
-                        string songInfo = songSuggest.songLibrary.GetName((ScoreSaberID)song);
-                        songSuggest.log?.WriteLine($"Player Rank: {playerRank,3}   Suggest Rank: {suggestRank,3}   Song: {songInfo}");
-
-                    }
+                    ignoreSongs.Add(songID);
                 }
             }
 

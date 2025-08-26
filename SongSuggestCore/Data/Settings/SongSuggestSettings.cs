@@ -23,9 +23,12 @@ namespace Settings
         //1.2 = 120%, 1.1 = 110% etc.
         //1.2 seems to be a good value to cut off low/high acc linkage, while still allowing a player room for growth suggestions
         //WorseAcc Cap can become relevant for filtering once players starts reaching very high acc range. 0.7 should limit impact of filter.
+        [Obsolete("Uses directional search instead")]
         public double BetterAccCap { get; set; } = 1.2;
+        [Obsolete("Uses directional search instead")]
         public double WorseAccCap { get; set; } = 0.7;
         public LeaderboardType Leaderboard { get; set; } = LeaderboardType.ScoreSaber;
+        [Obsolete("Dynamic values at low values, higher values does not seem at add currently")]
         public int OriginSongCount { get; set; } = 50;
         public SongCategory AccSaberPlaylistCategories { get; set; } = SongCategory.AccSaberStandard | SongCategory.AccSaberTrue | SongCategory.AccSaberTech;
         public FilterSettings FilterSettings { get; set; }

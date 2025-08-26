@@ -21,9 +21,12 @@ namespace SongSuggestNS
         //Static Version Info based on a SemVer.
         private static int _semVerMajor = 2;
         private static int _semVerMinor = 2;
-        private static int _semVerPatch = 2;
+        private static int _semVerPatch = 4;
 
         //2.2.1: Test with reduced link requirement from 50 down to 10.
+        //2.2.2: Updated web links to Beat Leader
+        //2.2.3: Support functions for Acc Saber Reweight tool
+        //2.2.4: Rewrite of Suggest Logic to more generic. Almost all Acc Saber special code gone.
 
         public static Version GetCoreVersion() { return new Version(_semVerMajor, _semVerMinor, _semVerPatch); }
         public static Version MinimumUIVersion() { return new Version(2, 0, 0); }
@@ -53,11 +56,6 @@ namespace SongSuggestNS
 
         //List of last ranked song suggestions
         public LastRankedSuggestions lastSuggestions { get; set; }
-
-        //Boolean set to true if the quality of the found songs was not high enough
-        //e.g. Had to remove the betterAcc and/or songs was missing from generating originSongsCount suggestions.
-        [Obsolete("Should no longer need to be checked, as we remove a %'age of worst links instead.")]
-        public Boolean lowQualitySuggestions { get; set; } = false;
 
         //Log Details Target (null means it is off), else set the writer here.
         public TextWriter log => Log; //Been using non global log all over, just use global Log in rewrites.
@@ -98,6 +96,8 @@ namespace SongSuggestNS
             songLibrary = new SongLibraryInstance { songSuggest = this };
             if (SongSuggest.MainInstance == this) songLibrary.SetActive();
             songLibrary.SetLibrary(fileHandler.LoadSongLibrary());
+
+            //**BUG** Some issues with SongLiking/Ban that can cause crashes. Possible related to unknown songs.
 
             songLiking = new SongLiking
             {
@@ -147,9 +147,11 @@ namespace SongSuggestNS
             //Find the songID's without a hyphen and update them to internal (they are old ScoreSaber IDs)
             foreach (var songBan in songBans.Where(c => !c.songID.Contains("-")))
             {
-                Song song = ((ScoreSaberID)songBan.songID).GetSong();
-                songBan.songID = song.internalID;
+                songBan.songID = SongLibrary.StringIDToSong(songBan.songID, SongIDType.ScoreSaber).internalID;
             }
+            
+            //If some old ID's could not be found, we drop them.
+            songBans = songBans.Where(c => c.songID != null).ToList();
 
             //Try and set missing ban names for later if missing.
             foreach (var songBan in songBans.Where(c => string.IsNullOrEmpty(c.songName)))
@@ -161,7 +163,6 @@ namespace SongSuggestNS
             return songBans;
         }
 
-        //**BUG** If song is not found, and empty object is requested, giving possible empty object.
         private List<SongLike> UpdateOldRecords(List<SongLike> songLikes)
         {
             //Find the songID's without a hyphen and update them to internal (they are old ScoreSaber IDs)
@@ -169,7 +170,11 @@ namespace SongSuggestNS
             {
                 songLike.songID = SongLibrary.StringIDToSong(songLike.songID, SongIDType.ScoreSaber).internalID;
             }
+            
+            //If some old ID's could not be found, we drop them.
+            songLikes = songLikes.Where(c => c.songID != null).ToList();
 
+            //Try and set missing ban names for later if missing.
             foreach (var songLike in songLikes.Where(c => string.IsNullOrEmpty(c.songName)))
             {
                 SongID songID = (InternalID)songLike.songID;

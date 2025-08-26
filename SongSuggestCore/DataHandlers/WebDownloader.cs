@@ -136,7 +136,7 @@ namespace WebDownloading
             }
             catch
             {
-                songSuggest.log?.WriteLine("Error finding song with ID: " + songID);
+                songSuggest.log?.WriteLine($"Error finding song with ID: {songID} Page: {page}");
             }
             return new ScoreCollection();
         }

@@ -5,6 +5,7 @@ using LinkedData;
 using SongSuggestNS;
 using Curve;
 using SongLibraryNS;
+using System.Reflection;
 
 namespace Actions
 {
@@ -32,6 +33,36 @@ namespace Actions
         public double PlayerScoreValue(SongID songID)
         {
             return songSuggest.activePlayer.GetRatedScore(songID, leaderboardType);
+        }
+
+        internal double PlayerWeightedScoreValue(SongID value)
+        {
+            return PlayerScoreValue(value) * PlayerScoreRankModifier(value);
+        }
+
+        internal double PlayerScoreRankModifier(SongID value)
+        {
+            int rank = PlayerScoreRank(value);
+            if (rank == -1) return 0.0;
+
+            switch (leaderboardType)
+            {
+                case LeaderboardType.ScoreSaber:
+                case LeaderboardType.BeatLeader:
+                    return Math.Pow(0.965, rank-1); //rank starts at 1, here we need to start at 0
+                case LeaderboardType.AccSaber:
+                    return AccSaberCurve.RankMultiplier(rank);
+            }
+
+            //Unknown handling detected
+            throw new InvalidOperationException($"Unknown PlayerScoreRankModifier Source found: {leaderboardType}");
+        }
+
+        //Returns the specific Rank of a sub leaderboard (e.g. acc sabers 3 leaderboards separate ranks (An Acc Saber song only has 1 actual category))
+        internal int PlayerScoreRank(SongID value)
+        {
+            SongCategory category = LeaderboardSongCategory() & value.GetSong().songCategory;
+            return songSuggest.activePlayer.GetLeaderboardRank(value, leaderboardType, category);
         }
 
         //Returns the acc value of a song, if song .. if song is unknown 0 is returned.
@@ -155,6 +186,7 @@ namespace Actions
             }
             throw new InvalidOperationException($"Unknown LeaderboardSongIDType Source found: {leaderboardType}");
         }
+
 
     }
 }
