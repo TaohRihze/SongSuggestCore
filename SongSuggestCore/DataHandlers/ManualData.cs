@@ -13,6 +13,10 @@ namespace SongLibraryNS
         //!!!Current workround will break when a note will not match 115 points (new note types).
         public static int SongMaxScore(string songID)
         {
+            return SongMaxScore(songID, 0);
+        }
+            public static int SongMaxScore(string songID, int score)
+        {
 
 
             //Insert Workaround for songs without max score
@@ -43,8 +47,8 @@ namespace SongLibraryNS
                 case "572414":
                     return SongMaxScore(630);
                 default:
-                    SongSuggest.Log?.WriteLine($"Song has no maxScore, nor known alternate: {songID}");
-                    return 0;
+                    if (score == 0) SongSuggest.Log?.WriteLine($"Song has no maxScore, nor known alternate: {songID}"); //Alerts only if no value was supplied
+                    return score; //Returns given value
             }
         }
 

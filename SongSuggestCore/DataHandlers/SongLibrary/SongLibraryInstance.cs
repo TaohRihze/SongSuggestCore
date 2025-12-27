@@ -24,7 +24,6 @@ namespace SongLibraryNS
         //For 1.37- client backward compatibility
         //Also delete adding stuff in Link Creation once songs is removed, marked in comments there.
         [Obsolete("Use UIDStringToSong instead")]
-
         public Dictionary<string, Song> songs = new Dictionary<string, Song>();
         public Dictionary<string, SongID> UIDStringToSongID = new Dictionary<string, SongID>();
         public Dictionary<string, Song> UIDStringToSong = new Dictionary<string, Song>();
@@ -256,46 +255,6 @@ namespace SongLibraryNS
         }
         #endregion
 
-        //Removes songs that are not actively linked to a supported format
-        //**Temporary Workaround, also removes songs without a ScoreSaber ID**
-        //**Resets the libraries update time to 0 for Beat Leader as Beat Leader ID's may be removed by this**
-        public void RemoveSongsWithoutSongCategories()
-        {
-            //**ScoreSaberID Null removal for backward Compatibility
-            var keyPairsWithoutScoreSaberID = UIDStringToSong
-                .Where(pair => string.IsNullOrEmpty(pair.Value.scoreSaberID))
-                .ToList();
-
-            if (keyPairsWithoutScoreSaberID.Count > 0)
-            {
-                Updated = true;
-                foreach (var keyPair in keyPairsWithoutScoreSaberID)
-                {
-                    UIDStringToSong.Remove(keyPair.Key);
-                }
-            }
-
-            // Removal of any keypair without any songCategory
-            var keyPairsToRemove = UIDStringToSong
-                .Where(pair => pair.Value.songCategory == 0)
-                .ToList();
-
-            if (keyPairsToRemove.Count > 0)
-            {
-                Updated = true;
-                foreach (var keyPair in keyPairsToRemove)
-                {
-                    UIDStringToSong.Remove(keyPair.Key);
-                }
-            }
-
-            //Reset the update time on Beat Leader Songs as they are no longer valid (Leaderboard File is not impacted be so no update there)
-            //**This is a temporary workaround along with the ScoreSaberID Null
-            songSuggest.filesMeta.beatLeaderSongsUpdated = 0;
-            songSuggest.fileHandler.SaveFilesMeta(songSuggest.filesMeta);
-            UIDStringToSongID.Clear(); //Songs may have been removed, so we should not hand out incorrect SongID links moving forward.
-        }
-
         //Activate SongType/s
         public void AddSongCategory(Song song, SongCategory songCategory)
         {
@@ -315,13 +274,16 @@ namespace SongLibraryNS
             {
                 Updated = true;
                 song.songCategory = song.songCategory & (~songCategory);
+                SetLibraryLink(song);
             }
         }
 
         //Saves an updated library
         public void Save()
         {
-            songSuggest.fileHandler.SaveSongLibrary(new List<Song>(UIDStringToSong.Values.Distinct()));
+            songSuggest.fileHandler.SaveSongLibrary(new List<Song>(UIDStringToSong.Values
+                .Where(c => c.songCategory != 0)                                            //We get rid of the songs that are no longer attached to a Category.
+                .Distinct()));                                                              //Duplicates should not be possible, but we might as well ensure it.
             Updated = false;
         }
 

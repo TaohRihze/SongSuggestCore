@@ -21,12 +21,15 @@ namespace SongSuggestNS
         //Static Version Info based on a SemVer.
         private static int _semVerMajor = 2;
         private static int _semVerMinor = 2;
-        private static int _semVerPatch = 4;
+        private static int _semVerPatch = 7;
 
         //2.2.1: Test with reduced link requirement from 50 down to 10.
         //2.2.2: Updated web links to Beat Leader
         //2.2.3: Support functions for Acc Saber Reweight tool
-        //2.2.4: Rewrite of Suggest Logic to more generic. Almost all Acc Saber special code gone.
+        //2.2.4: Rewrite of Suggest Logic to be more generic. Almost all Acc Saber special code gone.
+        //2.2.5: Fix where wrong max score could be used (known error corrections always get applied, regardless if fixed or not on source)
+        //2.2.6: Test Build: Created Alternative Algorithm for comparative best, that tries to split found top 30's evenly among songs, and activated it default for BL.
+        //2.2.7: Fix, Alternate leaderboard assignment forgot to keep looking for an entry every round until options was exhausted, causing possible assignment starvation on maps.
 
         public static Version GetCoreVersion() { return new Version(_semVerMajor, _semVerMinor, _semVerPatch); }
         public static Version MinimumUIVersion() { return new Version(2, 0, 0); }
@@ -149,7 +152,7 @@ namespace SongSuggestNS
             {
                 songBan.songID = SongLibrary.StringIDToSong(songBan.songID, SongIDType.ScoreSaber).internalID;
             }
-            
+
             //If some old ID's could not be found, we drop them.
             songBans = songBans.Where(c => c.songID != null).ToList();
 
@@ -170,7 +173,7 @@ namespace SongSuggestNS
             {
                 songLike.songID = SongLibrary.StringIDToSong(songLike.songID, SongIDType.ScoreSaber).internalID;
             }
-            
+
             //If some old ID's could not be found, we drop them.
             songLikes = songLikes.Where(c => c.songID != null).ToList();
 
@@ -188,7 +191,7 @@ namespace SongSuggestNS
             activePlayer.ActiveScoreLocations.Clear();
             if (CoreSettings.UseScoreSaberLeaderboard || CoreSettings.UseAccSaberLeaderboard) activePlayer.ActiveScoreLocations.Add(ScoreLocation.ScoreSaber);
             if (CoreSettings.UseBeatLeaderLeaderboard) activePlayer.ActiveScoreLocations.Add(ScoreLocation.BeatLeader);
-            
+
             //Session Scores should always be active.
             activePlayer.ActiveScoreLocations.Add(ScoreLocation.SessionScores);
         }
@@ -272,7 +275,7 @@ namespace SongSuggestNS
         public void AddLocalScore(string hash, string difficulty, double accuracy)
         {
             log?.WriteLine($"hash: {hash} difficulty: {difficulty} accuracy {accuracy} received");
-            SongID songID = songLibrary.GetID("Standard",difficulty,hash);
+            SongID songID = songLibrary.GetID("Standard", difficulty, hash);
             AddLocalScore(songID, accuracy, "");
         }
 
@@ -285,7 +288,7 @@ namespace SongSuggestNS
             localScores.AddScore(songID, accuracy, modifiers);
             if (localScores.updated) localScores.Save();
         }
-        
+
         public void AddSessionScore(SongID songID, double accuracy, string modifiers)
         {
             //log?.WriteLine($"Session Score Modifiers: {modifiers}");
@@ -354,7 +357,7 @@ namespace SongSuggestNS
         [Obsolete("Use SongID version, get SongID from SongLibrary")]
         public string GetAPString(string hash, string difficulty)
         {
-            SongID songID = songLibrary.GetID("Standard", difficulty,hash);
+            SongID songID = songLibrary.GetID("Standard", difficulty, hash);
             return GetAPString(songID);
         }
 
@@ -602,7 +605,8 @@ namespace SongSuggestNS
             if (CoreSettings.FilterScoreSaberBiasInBeatLeader) removeScoreSaberOnlyScoresFromBeatLeaderLeaderBoard = true;
 
             //Save the pruned file
-            CreateComparativeBestLeaderboard(beatLeaderPlayerList, "BeatLeaderLeaderboard");
+            //CreateComparativeBestLeaderboard(beatLeaderPlayerList, "BeatLeaderLeaderboard");
+            CreateComparativeBestLeaderboardEvenMapDistribution(beatLeaderPlayerList, "BeatLeaderLeaderboard");
             //fileHandler.SaveScoreBoard(beatLeaderPlayerList, "BeatLeaderLeaderboard");
         }
 
@@ -637,7 +641,7 @@ namespace SongSuggestNS
                     //Transform current object into a new with an updated rank by its index.
                     .Select((c, index) =>
                     {
-                        c.rank = index+1; //Ranks starts at 1, index value is 0 indexed.
+                        c.rank = index + 1; //Ranks starts at 1, index value is 0 indexed.
                         return c;
                     })
                     .ToList();
@@ -654,6 +658,102 @@ namespace SongSuggestNS
                 double comparativeValue = playersScore / bestScore;
                 return comparativeValue;
             }
+        }        
+        
+        //ComparativeBest Alternative (Tries to maximize share scores evenly among maps)
+        public void CreateComparativeBestLeaderboardEvenMapDistribution(List<Top10kPlayer> top10kPlayers, string fileName)
+        {
+            log?.WriteLine($"Comparative Best: {top10kPlayers.Count()} Players, {top10kPlayers.First().top10kScore.Count()}songs");
+            Top10kPlayers best30 = new Top10kPlayers()
+            {
+                songSuggest = this,
+            };
+            best30.top10kPlayers = top10kPlayers;
+            //Generate meta data on top 30 scores, which allows for lookup of what the max score is on a map by the string ID of the map. (No Song Library needed)
+            best30.GenerateTop10kSongMeta();
+
+            //Store each scores comparative best values, as well as link them to the songs
+            Dictionary<string, List<Top10kScore>> songScores = new Dictionary<string, List<Top10kScore>>();
+            Dictionary<Top10kPlayer, int> usedPlayerScores = new Dictionary<Top10kPlayer, int>();
+
+            foreach (var person in best30.top10kPlayers)
+            {
+                foreach (var score in person.top10kScore)
+                {
+                    if (!songScores.ContainsKey(score.songID)) songScores[score.songID] = new List<Top10kScore>();
+                    songScores[score.songID].Add(score);
+                    score.parent = person;
+                }
+                usedPlayerScores[person] = 0;
+                //Remove current person assignment, we restore these from those used from songs
+                person.top10kScore.Clear();
+            }
+
+            //Order each songs scores from largest to smallest PP (we work with last element as we plan on remove checked elements from the end (better list removal))
+            //So order by smallest to largest, so largest is last, and is what is used.
+            foreach (var key in songScores.Keys.ToList())
+            {
+                songScores[key] = songScores[key]
+                    .OrderBy(s => s.pp)
+                    .ToList();
+            }
+
+            //Get the assignment order, we want to assign scores with a priority to those with few entries, in case of a tie, strongest scores is used first.
+            var songs = songScores
+                .OrderBy(c => c.Value.Count())
+                .ThenByDescending(c => c.Value.Last().pp)
+                .Select(c => c.Key)
+                .ToList();
+
+            //Loop assignment until all scores are used up
+            while(songs.Count > 0)
+            {
+                //Loop each remaining song until its candidates are check, if empty we remove it from songs.
+                foreach (var song in songs.ToList())
+                {
+                    var entries = songScores[song];
+
+                    //Remove exhausted players
+                    while (entries.Count > 0 && usedPlayerScores[entries.Last().parent] >= 20)
+                    {
+                        entries.RemoveAt(entries.Count - 1);
+                    }
+
+                    // assign next player if any left
+                    if (entries.Count > 0)
+                    {
+                        var lastIndex = entries.Count - 1;
+                        var entry = entries[lastIndex];
+                        usedPlayerScores[entry.parent]++;
+                        entry.parent.top10kScore.Add(entry);
+                        entries.RemoveAt(lastIndex);
+                    }
+
+                    // remove song if exhausted
+                    if (entries.Count == 0)
+                    {
+                        songs.Remove(song);
+                    }
+                }
+            }
+
+            //Refix Index on scores from 30 to 20.
+            foreach (var person in best30.top10kPlayers)
+            {
+                person.top10kScore = person.top10kScore
+                    .OrderByDescending(c => c.pp)
+                    //Transform current object into a new with an updated rank by its index.
+                    .Select((c, index) =>
+                    {
+                        c.rank = index + 1; //Ranks starts at 1, index value is 0 indexed.
+                        return c;
+                    })
+                    .ToList();
+            }
+            log?.WriteLine($"Comparative Best: {top10kPlayers.Count()} Players, {top10kPlayers.First().top10kScore.Count()}songs");
+
+            //Saves the updated top 20's with the provided name (for later loading in setup).
+            best30.Save(fileName);
         }
 
         //Remove Players with ScoreSaberOnly Scores on BL. This is unlikely at "random" play (1-10% chance depending on how you look at it) so we remove

@@ -1,5 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using Newtonsoft.Json.Linq;
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace Curve
 {
@@ -7,7 +10,7 @@ namespace Curve
     {
         private static double SecretMultiplier = 42.117208413;
 
-        private static readonly List<CurvePoint> curvePoints = new List<CurvePoint>
+        public static readonly List<CurvePoint> curvePoints = new List<CurvePoint>
         {
             new CurvePoint { Accuracy = 0.0, Multiplier = 0.0 },
             new CurvePoint { Accuracy = 0.6, Multiplier = 0.18223233667439062 },
@@ -76,6 +79,13 @@ namespace Curve
         {
             if (accuracy < 0 || accuracy > 1) return 0.0;
             return SecretMultiplier * Multiplier(accuracy) * starRating;
+        }
+
+        //Rank is 1 indexed, and result is 0-1 range.
+        public static double RankMultiplier(int rank)
+        {
+            double multiplier = Math.Pow(0.965, rank - 1);
+            return multiplier;
         }
 
     }

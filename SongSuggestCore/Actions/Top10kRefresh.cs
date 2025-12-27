@@ -110,7 +110,7 @@ namespace Actions
                 //Let us create a Top10k score for each of these. (30 entries)
                 List<Top10kScore> top30score = new List<Top10kScore>();
 
-                //Keeps records of a players oldest score, so we can see if player should be ignored.
+                //Keeps records of a players newest set score, so we can see if player should be ignored for not having set scores in a while.
                 DateTime newestScore = DateTime.MinValue;
 
                 //Converts the leaderboard scores to normal top10k scores
@@ -188,7 +188,7 @@ namespace Actions
             songSuggest.log?.WriteLine("Found Users: {0} Skipped Users: {1} ({2} low efficiency / {3} low play / {4} inactive) Total: {5}", playerCount, skippedPlayers, lowEfficiencyPlayers, lowPlayCount, inactivePlayers, playerCount + skippedPlayers);
 
             //All players needed are parsed, lets reduce and save the list as 20 entries, and get them saved
-            songSuggest.CreateComparativeBestLeaderboard(approved10kPlayers, "Top10KPlayers");
+            songSuggest.CreateComparativeBestLeaderboardEvenMapDistribution(approved10kPlayers, "Top10KPlayers");
 
             //Songlibrary needs saved if any new songs was found
             if (songLibrary.Updated) songLibrary.Save();

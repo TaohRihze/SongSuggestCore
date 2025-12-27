@@ -229,22 +229,35 @@ namespace Actions
         //At the same time we remove limits on all songs
         public List<SongID> GetFillerSongs()
         {
-            //Find all songs in the leaderboard with at least a minimum of records amount, we grab middle of average rank.
-            //As well as decently linked maps
-            //And select the ones with the lowest PP value mathes that (should target lower rank songs).
-            //Needs a better rewrite, but seems slighlty better than previous without middle Average Rank selection, especially for Acc.
-            int middleOfAverageRank = suggestSM.Leaderboard().top10kSongMeta.Count / 4;
+            //Find all songs in the leaderboard with at least a minimum of top scores, so we base seed songs on stuff that are linked to other stuff
+            //We then order by lowest max scores, so we pick the likely easier songs (best metric on current leaderboards)
+            //We keep a certain %'age of the remaining scores to get rid of the "highest ranked" ones
+            //And then we sort by the best average rank in the list, so we get strong songs as candidates. (This is a mix of best of the worst)
             
-            var fillerSongs = suggestSM.Leaderboard().top10kSongMeta
-                .OrderBy(c => c.Value.totalRank / c.Value.count)
-                .Skip(middleOfAverageRank)
-                .Take(middleOfAverageRank*2)
-                .Where(c => c.Value.count >= minPlays)
-                .OrderBy(c => c.Value.maxScore)
+            //Taste Testing 30% seemed to get spread results on the leaderboards
+            double percentToLookIn = 0.30;
+
+            var fillerSongCandidates = suggestSM.Leaderboard().top10kSongMeta
+                .Where(c => c.Value.count >= minPlays)                                  //Linked Up songs only
+                .OrderBy(c => c.Value.averageScore)                                     //Picks lowest value to get easier songs (Need better handling)
+                .ToList();
+
+            int targetCount = (int)(percentToLookIn * fillerSongCandidates.Count())+1;  //Int rounds down, lets keep at least 1 song. Take cannot overflow.
+
+            var fillerSongIDs = fillerSongCandidates     
+                .Take(targetCount)                                                      //Testing found this %'age to give a mix of old and new, and lower amount of horrible stuff
+                .OrderBy(c => c.Value.totalRank / c.Value.count)                        //Selecting best average rank, makes strong candidates appear
                 .Select(c => c.Value.songID)
                 .Select(c => SongLibrary.StringIDToSongID(c, suggestSM.LeaderboardSongIDType()))
                 .ToList();
-            return fillerSongs;
+
+            songSuggest.log?.WriteLine($"Selected Filler Songs");
+            foreach (var song in fillerSongIDs.Take(50))
+            {
+                songSuggest.log?.WriteLine(SongLibrary.GetDisplayName(song));
+            }
+
+            return fillerSongIDs;
         }
 
         //Order the songs via the different active filters

@@ -91,8 +91,8 @@ namespace PlayerScores
                         break;
                     }
 
-                    //Reuploaded songs may be missing maxScore, this is only relevant for ranked versions, so this workaround to assign known missing scores
-                    if (record.leaderboard.maxScore == 0) record.leaderboard.maxScore = ManualData.SongMaxScore($"{record.leaderboard.id}");
+                    //Reuploaded songs may be missing scores, and songs may contain wrong max scores, this is only relevant for ranked versions, so this workaround to assign known missing scores
+                    record.leaderboard.maxScore = ManualData.SongMaxScore($"{record.leaderboard.id}", record.leaderboard.maxScore);
 
                     //Update records data
                     playerScore.TimeSet = record.score.timeSet;
