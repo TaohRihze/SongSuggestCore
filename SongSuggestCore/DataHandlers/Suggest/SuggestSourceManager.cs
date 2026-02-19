@@ -49,6 +49,7 @@ namespace Actions
             {
                 case LeaderboardType.ScoreSaber:
                 case LeaderboardType.BeatLeader:
+                case LeaderboardType.AutoBalancer:
                     return Math.Pow(0.965, rank-1); //rank starts at 1, here we need to start at 0
                 case LeaderboardType.AccSaber:
                     return AccSaberCurve.RankMultiplier(rank);
@@ -104,25 +105,25 @@ namespace Actions
             return allLikedSongIDs;
          }
 
-        //Returns the calculated value of a songID .. unknown songs got 0 accuracy so 0 is returned.
-        public double CalculatedScore(SongID songID, double accuracy)
-        {
-            Song song = SongLibrary.SongIDToSong(songID);
+        ////Returns the calculated value of a songID .. unknown songs got 0 accuracy so 0 is returned.
+        //public double CalculatedScore(SongID songID, double accuracy)
+        //{
+        //    Song song = songID.GetSong();
 
-            switch (leaderboardType)
-            {
-                case LeaderboardType.ScoreSaber:
-                    double starRating = song.starScoreSaber;
-                    return ScoreSaberCurve.PP(accuracy, starRating);
-                case LeaderboardType.AccSaber:
-                    double complexityRating = song.complexityAccSaber;
-                    double score = AccSaberCurve.AP(accuracy, complexityRating);
-                    return score;
-            }
+        //    switch (leaderboardType)
+        //    {
+        //        case LeaderboardType.ScoreSaber:
+        //            double starRating = song.starScoreSaber;
+        //            return ScoreSaberCurve.PP(accuracy, starRating);
+        //        case LeaderboardType.AccSaber:
+        //            double complexityRating = song.complexityAccSaber;
+        //            double score = AccSaberCurve.AP(accuracy, complexityRating);
+        //            return score;
+        //    }
 
-            //Unknown handling detected
-            throw new InvalidOperationException($"Unknown CalculatedScore Source found: {leaderboardType}");
-        }
+        //    //Unknown handling detected
+        //    throw new InvalidOperationException($"Unknown CalculatedScore Source found: {leaderboardType}");
+        //}
 
         internal string GetStringID (SongID songID)
         {
@@ -134,6 +135,8 @@ namespace Actions
                     return songID.GetSong().scoreSaberID;
                 case LeaderboardType.BeatLeader:
                     return songID.GetSong().beatLeaderID;
+                case LeaderboardType.AutoBalancer:
+                    return songID.GetSong().internalID;
             }
             throw new InvalidOperationException($"Unknown ScoreBoardTopPlays Source found: {leaderboardType}");
         }
@@ -153,6 +156,8 @@ namespace Actions
                     return songSuggest.accSaberScoreBoard;
                 case LeaderboardType.BeatLeader:
                     return songSuggest.beatLeaderScoreBoard;
+                case LeaderboardType.AutoBalancer:
+                    return songSuggest.autoBalancerScoreBoard;
             }
             throw new InvalidOperationException($"Unknown ScoreBoardTopPlays Source found: {leaderboardType}");
         }
@@ -168,6 +173,8 @@ namespace Actions
                     return SongCategory.AccSaberTrue | SongCategory.AccSaberStandard | SongCategory.AccSaberTech;
                 case LeaderboardType.BeatLeader:
                     return SongCategory.BeatLeader;
+                case LeaderboardType.AutoBalancer:
+                    return SongCategory.AutoBalancer;
             }
             throw new InvalidOperationException($"Unknown LeaderboardSongCategory Source found: {leaderboardType}");
         }
@@ -183,6 +190,8 @@ namespace Actions
                     return SongIDType.ScoreSaber;
                 case LeaderboardType.BeatLeader:
                     return SongIDType.BeatLeader;
+                case LeaderboardType.AutoBalancer:
+                    return SongIDType.Internal;
             }
             throw new InvalidOperationException($"Unknown LeaderboardSongIDType Source found: {leaderboardType}");
         }

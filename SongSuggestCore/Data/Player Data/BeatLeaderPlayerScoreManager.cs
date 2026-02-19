@@ -200,6 +200,8 @@ namespace PlayerScores
                     return AccSaberCurve.AP(score.Accuracy, song.complexityAccSaber);
                 case LeaderboardType.BeatLeader:
                     return score.RatedScore;
+                case LeaderboardType.AutoBalancer:
+                    return AutoBalancerCurve.PP(score.Accuracy, song.complexityAutoBalancer);
                 default:
                     return 0;
             }

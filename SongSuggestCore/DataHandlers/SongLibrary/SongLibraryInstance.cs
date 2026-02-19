@@ -14,7 +14,7 @@ namespace SongLibraryNS
     {
         //Dynamics
         public SongSuggest songSuggest { get; set; }
-        public const String FormatVersion = "2.0";
+        public const String FormatVersion = "2.1";
 
         //Returns true if songs has been added/modified since load/last save.
         public bool Updated { get; set; } = false;
@@ -306,7 +306,6 @@ namespace SongLibraryNS
             return songID.GetSong().songCategory != 0;
         }
 
-
         //Returns True/False if the song is recorded with an active SongCategory
         [Obsolete("Use Song ID Version")]
         public bool HasAnySongCategory(string hash, string difficulty)
@@ -333,7 +332,6 @@ namespace SongLibraryNS
             if (!UIDStringToSong.ContainsKey(songID.UniqueID)) return false;
             return (UIDStringToSong[songID.UniqueID].songCategory & category) == category;
         }
-
 
         public bool HasAnySongCategory(SongID songID, SongCategory category)
         {

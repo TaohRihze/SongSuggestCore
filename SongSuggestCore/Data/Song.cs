@@ -53,7 +53,8 @@ namespace SongLibraryNS
         public double starTechBeatLeader { get; set; }
         //---
         public double complexityAccSaber { get; set; }
-
+        //---Auto Balancer ratings
+        public double complexityAutoBalancer { get; set; }
         public String GetDifficultyText()
         {
             switch (difficulty)

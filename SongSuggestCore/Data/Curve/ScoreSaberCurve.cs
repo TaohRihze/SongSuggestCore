@@ -10,7 +10,7 @@ namespace Curve
     {
         private static double SecretMultiplier = 42.117208413;
 
-        public static readonly List<CurvePoint> curvePoints = new List<CurvePoint>
+        public static List<CurvePoint> curvePoints = new List<CurvePoint>
         {
             new CurvePoint { Accuracy = 0.0, Multiplier = 0.0 },
             new CurvePoint { Accuracy = 0.6, Multiplier = 0.18223233667439062 },

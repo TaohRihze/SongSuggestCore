@@ -72,7 +72,7 @@ namespace Actions
         int improveSpotsAccSaber = 2;
 
         //Percent of song links to keep (70% seems to work well in general, but acc saber players can use PP Potential slider to adjust this (
-        double LinkKeepPercent = 0.7;
+        double LinkKeepPercent = 0.70;
 
         //Links for variables used in this class from Settings file. Classes are not done here
         public bool ignorePlayedAll => settings.IgnorePlayedAll;
@@ -110,7 +110,7 @@ namespace Actions
             previousTotal = total;
             total = timer.ElapsedMilliseconds;
             segment = total - previousTotal;
-            TimeTaken = ($"{TimeTaken}{Environment.NewLine}{sectionName,-40} Total: {total,4}ms  Segment: {segment,4}ms  Requests: {songSuggest.songLibrary.GetSongIDRequests()}");
+            TimeTaken = ($"{TimeTaken}{Environment.NewLine}{sectionName,-40} Total: {total,5}ms  Segment: {segment,5}ms  Requests: {songSuggest.songLibrary.GetSongIDRequests()}");
         }
 
         //Creates a playlist with playlist count suggested songs based on the link system.
@@ -120,29 +120,14 @@ namespace Actions
             //save request
             songSuggest.fileHandler.SaveSongSuggestRequest(settings);
 
-            ScoreLocation scoreLocation = ScoreLocation.ScoreSaber;
-            switch (settings.Leaderboard)
-            {
-                case LeaderboardType.ScoreSaber:
-                    scoreLocation = ScoreLocation.ScoreSaber;
-                    break;
-                case LeaderboardType.AccSaber:
-                    scoreLocation = ScoreLocation.ScoreSaber;
-                    //Temporary Workaround to reset old UI's 25 song count, 50 default seems to work better now.
-                    if (originSongsCount == 25) settings.OriginSongCount = 50;
-                    break;
-                case LeaderboardType.BeatLeader:
-                    scoreLocation = ScoreLocation.BeatLeader;
-                    break;
-            }
+            //Workaround to default accsaber to 50 songs if unmodified. (suggested default).
+            if (settings.Leaderboard == LeaderboardType.AccSaber && originSongsCount == 25) settings.OriginSongCount = 50;
 
             songSuggest.log?.WriteLine($"LinkKeepPercent set at: {LinkKeepPercent}");
 
             suggestSM = new SuggestSourceManager()
             {
                 songSuggest = this.songSuggest,
-                //For now local scores require it is ScoreSaber data
-                //scoreLocation = (useLocalScores && scoreLocation == ScoreLocation.ScoreSaber) ? ScoreLocation.LocalScores : scoreLocation,
                 leaderboardType = leaderboard
             };
 
@@ -150,8 +135,9 @@ namespace Actions
             var currentActiveScoreLocations = songSuggest.activePlayer.ActiveScoreLocations;
             if (useLocalScores)
             {
+                Console.WriteLine("Using Local Scores");
                 songSuggest.activePlayer.ActiveScoreLocations.Clear();
-                songSuggest.activePlayer.ActiveScoreLocations.Add(ScoreLocation.LocalScores);
+                songSuggest.activePlayer.ActiveScoreLocations.Add(ScoreLocation.SessionScores);
             }
 
             songSuggest.log?.WriteLine("Starting Song Suggest");
@@ -220,7 +206,13 @@ namespace Actions
             //Link the origin songs with the songs on the LeaderBoard as a basis for suggestions.
             ignoreSongs = songSuggest.songBanning.GetPermaBannedIDs();
             GenerateLinks.Execute(dto, out originSongs, out targetSongs, out linkedSongs);
-            linkedPlayers = linkedSongs / 19; //Workaround for now there is always 19 linked songs per player, this may change.
+            var linkedPlayerIDs = targetSongs.endPoints.Values
+                .SelectMany(c => c.songLinks)
+                .Select(d => d.playerID)
+                .Distinct()
+                .ToList();
+            linkedPlayers = linkedPlayerIDs.Count();
+
             songSuggest.log?.WriteLine("Completion: " + (songSuggestCompletion * 100) + "%");
             songSuggest.log?.WriteLine($"Suggest Linking Done: {timer.ElapsedMilliseconds}ms");
         }

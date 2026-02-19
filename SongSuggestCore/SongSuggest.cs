@@ -13,6 +13,7 @@ using Data;
 using PlayerScores;
 using System.Linq;
 using PlaylistNS;
+using Newtonsoft.Json.Linq;
 
 namespace SongSuggestNS
 {
@@ -20,16 +21,18 @@ namespace SongSuggestNS
     {
         //Static Version Info based on a SemVer.
         private static int _semVerMajor = 2;
-        private static int _semVerMinor = 2;
-        private static int _semVerPatch = 7;
+        private static int _semVerMinor = 3;
+        private static int _semVerPatch = 0;
 
         //2.2.1: Test with reduced link requirement from 50 down to 10.
         //2.2.2: Updated web links to Beat Leader
         //2.2.3: Support functions for Acc Saber Reweight tool
         //2.2.4: Rewrite of Suggest Logic to be more generic. Almost all Acc Saber special code gone.
         //2.2.5: Fix where wrong max score could be used (known error corrections always get applied, regardless if fixed or not on source)
-        //2.2.6: Test Build: Created Alternative Algorithm for comparative best, that tries to split found top 30's evenly among songs, and activated it default for BL.
+        //2.2.6: Created Alternative Algorithm for comparative best, that tries to split found top 30's evenly among songs, and activated it default for BL.
         //2.2.7: Fix, Alternate leaderboard assignment forgot to keep looking for an entry every round until options was exhausted, causing possible assignment starvation on maps.
+        //2.2.8: Display Local Score value for last session generated leaderboard if local. (Overwrites AP default display, generate non local to reset).
+        //2.3.0: Support for Auto Balancer leaderboard (Including Local Score display updates).
 
         public static Version GetCoreVersion() { return new Version(_semVerMajor, _semVerMinor, _semVerPatch); }
         public static Version MinimumUIVersion() { return new Version(2, 0, 0); }
@@ -50,6 +53,7 @@ namespace SongSuggestNS
         public Top10kPlayers scoreSaberScoreBoard { get; set; }
         public Top10kPlayers accSaberScoreBoard { get; set; }
         public Top10kPlayers beatLeaderScoreBoard { get; set; }
+        public Top10kPlayers autoBalancerScoreBoard { get; set; }
 
         private bool removeScoreSaberOnlyScoresFromBeatLeaderLeaderBoard = false;
 
@@ -127,6 +131,10 @@ namespace SongSuggestNS
             accSaberScoreBoard = new Top10kPlayers { songSuggest = this };
             accSaberScoreBoard.FormatName = "Acc Saber";
             accSaberScoreBoard.Load("AccSaberLeaderboardData");
+
+            autoBalancerScoreBoard = new Top10kPlayers { songSuggest = this };
+            autoBalancerScoreBoard.FormatName = "Auto Balancer";
+            autoBalancerScoreBoard.Load("AutoBalancerLeaderboardData");
 
             //Load the BeatLeader leaderboard if active.
             if (CoreSettings.UseBeatLeaderLeaderboard) LoadBeatLeaderLeaderBoard();
@@ -363,20 +371,85 @@ namespace SongSuggestNS
 
         public string GetAPString(SongID songID)
         {
-            //Add Local Scores if needed
-            bool localScoresPresent = activePlayer.ActiveScoreLocations.Contains(ScoreLocation.LocalScores);
-            if (!localScoresPresent) activePlayer.ActiveScoreLocations.Add(ScoreLocation.LocalScores);
             //Should always be active
             if (!activePlayer.ActiveScoreLocations.Contains(ScoreLocation.SessionScores)) activePlayer.ActiveScoreLocations.Add(ScoreLocation.SessionScores);
 
+            Console.WriteLine("Checking for Alt AP string");
+            //Check if we are using alternative display (Local Score mode, and/or AutoBalancer mode)
+            bool localScoresPresent = false;
+            if (activePlayer.ActiveScoreLocations.Contains(ScoreLocation.LocalScores)) localScoresPresent = true;
+            if (activePlayer.ActiveScoreLocations.Contains(ScoreLocation.LocalScores)) Console.WriteLine("Local Score Detected");
+
+            if (songSuggest?.settings?.Leaderboard == LeaderboardType.AutoBalancer) Console.WriteLine("AutoBalancer Request Detected");
+            if (!localScoresPresent)
+            { 
+                if (songSuggest?.settings?.Leaderboard == LeaderboardType.AutoBalancer)
+                {
+                    var AB = activePlayer.GetRatedScore(songID, LeaderboardType.AutoBalancer);
+                    return AB == 0 ? "" : $"{AB:0.00}AB";
+                }
+            }
+            
+
+
+            //Does not seem needed likely from before SessionScores and or Alternate Scores
+            //if (!altScoresPresent) activePlayer.ActiveScoreLocations.Add(ScoreLocation.LocalScores); 
+            //if (!altScoresPresent) activePlayer.ActiveScoreLocations.Remove(ScoreLocation.LocalScores);
+
+            if (localScoresPresent) return GetLocalScores(songID);
+
+            //Default display AP (if not other higher priority alternate was found
             var AP = activePlayer.GetRatedScore(songID, LeaderboardType.AccSaber);
-
-            //Remove local again if added.
-            if (!localScoresPresent) activePlayer.ActiveScoreLocations.Remove(ScoreLocation.LocalScores);
-
             return AP == 0 ? "" : $"{AP:0.00}AP";
         }
 
+        public string GetLocalScores(SongID songID)
+        {
+            var tmpScoreLocation = new List<ScoreLocation>(activePlayer.ActiveScoreLocations);
+
+            double score = 0.0;
+            string scoreType = "";
+
+            //Try and set AutoBalancer if used as last, will update with local score later
+            if (songSuggest?.settings?.Leaderboard == LeaderboardType.AutoBalancer)
+            {
+                score = activePlayer.GetRatedScore(songID, LeaderboardType.AutoBalancer);
+                scoreType = "AB";
+            }
+
+            activePlayer.ActiveScoreLocations.Clear();
+            activePlayer.ActiveScoreLocations.Add(ScoreLocation.LocalScores);
+
+            switch (songSuggest?.settings?.Leaderboard ?? LeaderboardType.AccSaber)
+            {
+                case LeaderboardType.AccSaber:
+                    score = activePlayer.GetRatedScore(songID, LeaderboardType.AccSaber);
+                    scoreType = "AP";
+                    break;
+
+                case LeaderboardType.ScoreSaber:
+                    score = activePlayer.GetRatedScore(songID, LeaderboardType.ScoreSaber);
+                    scoreType = "SS";
+                    break;
+
+                case LeaderboardType.BeatLeader:
+                    score = activePlayer.GetRatedScore(songID, LeaderboardType.BeatLeader);
+                    scoreType = "BL";
+                    break;
+
+                case LeaderboardType.AutoBalancer:
+                    score = activePlayer.GetRatedScore(songID, LeaderboardType.AutoBalancer);
+                    scoreType = "AB";
+                    break;
+            }
+
+            activePlayer.ActiveScoreLocations.Clear();
+            activePlayer.ActiveScoreLocations.AddRange(tmpScoreLocation);
+
+            return score == 0 ? "" : $"{score:0.00}{scoreType}";
+
+
+        }
 
         //Clear all Banned Songs
         public void ClearBan()

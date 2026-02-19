@@ -19,6 +19,8 @@ namespace SongSuggestNS
             SongCategoryDictionary.Add($"{SongCategory.BrokenDownloads}Hover", "Songs that may break in download for various reasons. Turn on if you do not mind a Missing Download icon and/or have the songs already.");
             SongCategoryDictionary.Add($"{SongCategory.BeatLeader}Label", "Beat Leader");
             SongCategoryDictionary.Add($"{SongCategory.BeatLeader}Hover", "Ranked Beat Leader Songs");
+            SongCategoryDictionary.Add($"{SongCategory.AutoBalancer}Label", "Auto Balancer");
+            SongCategoryDictionary.Add($"{SongCategory.AutoBalancer}Hover", "Song Suggests Autobalanced Leaderboard");
         }
     }
 }

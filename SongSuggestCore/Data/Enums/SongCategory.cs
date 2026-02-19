@@ -10,6 +10,7 @@ namespace SongSuggestNS
         AccSaberStandard = 4,
         AccSaberTech = 8,
         BeatLeader = 16,
+        AutoBalancer = 32,
         BrokenDownloads = 1073741824
     }
 }

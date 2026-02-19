@@ -31,22 +31,14 @@
 
         public static implicit operator string(SongID id) => id.Value;
 
-        //Allow comparison between songID objects.
+        //Allow comparison between songID objects. Goal is to return if 2 SongID's would produce same underlying Song.
+        //Dual Nulls are handled as normal C# code
         public override bool Equals(object obj)
-        {
-            // If same object type, just compare directly on value
-            if (obj is SongID songID)
-            {
-                if (this.Prefix == songID.Prefix)
-                {
-                    return this.UniqueID == songID.UniqueID;
-                }
-                return GetSong() == songID.GetSong();
-                
-                //return SongLibrary.Compare(this, songId);
-            }
-            return false;
+        { 
+            if (!(obj is SongID songID)) return false;
+            return GetSong() == songID.GetSong();
         }
+
         public static bool operator ==(SongID left, SongID right)
         {
             return left.Equals(right);

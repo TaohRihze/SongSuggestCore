@@ -170,6 +170,8 @@ namespace ActivePlayerData
                     return GetLeaderboardRank(songID, leaderboard, SongCategory.AccSaberStandard | SongCategory.AccSaberTrue | SongCategory.AccSaberTech);
                 case LeaderboardType.BeatLeader:
                     return GetLeaderboardRank(songID, leaderboard, SongCategory.BeatLeader);
+                case LeaderboardType.AutoBalancer:
+                    return GetLeaderboardRank(songID, leaderboard, SongCategory.AutoBalancer);
             }
             //No known handling so rank is set to unknown (-1).
             return -1;
@@ -189,6 +191,7 @@ namespace ActivePlayerData
                 {
                     case LeaderboardType.ScoreSaber:
                     case LeaderboardType.AccSaber:
+                    case LeaderboardType.AutoBalancer:
                         scoreIDs = GetRankedLocationScoreIDs(ScoreLocation.ScoreSaber);
                         break;
                     case LeaderboardType.BeatLeader:

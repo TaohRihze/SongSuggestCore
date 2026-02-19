@@ -7,7 +7,7 @@ namespace Curve
 {
     public class BeatLeaderCurve
     {
-        public static readonly List<CurvePoint> curvePoints = new List<CurvePoint>
+        public static List<CurvePoint> curvePoints = new List<CurvePoint>
         {
             new CurvePoint { Accuracy = 0.0, Multiplier = 0.000 },
             new CurvePoint { Accuracy = 0.6, Multiplier = 0.256 },

@@ -7,7 +7,7 @@ namespace Curve
 {
     public class AccSaberCurve
     {
-        public static readonly List<CurvePoint> curvePoints = new List<CurvePoint>
+        public static List<CurvePoint> curvePoints = new List<CurvePoint>
         {
             new CurvePoint { Accuracy = 0, Multiplier = 0 },
             new CurvePoint { Accuracy = 0.9409324581850277, Multiplier = 0.22864617746193472 },
