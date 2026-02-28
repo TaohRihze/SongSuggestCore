@@ -12,11 +12,13 @@ using System.Data.Common;
 
 namespace PlayerScores
 {
+
     //Stores and Handles local recorded scores when active.
     //Saves best score on each song since activation
     public class BeatLeaderPlayerScoreManager : IPlayerScores
     {
-
+        public SongModifier disallowedModifiers = SongModifier.SS | //SongModifier.FS | SongModifier.SF |
+                                                  SongModifier.NO | SongModifier.NB | SongModifier.NA;
         public ActivePlayer ActivePlayer { get; set; }
         public SongSuggest songSuggest => ActivePlayer.songSuggest;
         private ScoreCollection scoreCollection = new ScoreCollection();
@@ -91,6 +93,7 @@ namespace PlayerScores
                         playerScore.TimeSet = DateTimeOffset.FromUnixTimeSeconds(record.score.epochTime).UtcDateTime;
                         playerScore.Accuracy = record.score.accuracy;
                         playerScore.RatedScore = record.score.pp;
+                        playerScore.Modifiers = record.score.modifiers;
                     }
                     //Else create a new score and add it
                     else
@@ -101,8 +104,9 @@ namespace PlayerScores
                             RatedScore = record.score.pp,
                             Accuracy = record.score.accuracy,
                             TimeSet = DateTimeOffset.FromUnixTimeSeconds(record.score.epochTime).UtcDateTime,
-                            SongID = song.internalID
-                        };
+                            SongID = song.internalID,
+                            Modifiers = record.score.modifiers,
+                    };
                         playerScores.Add(newScore);
                     }
                     Updated = true;
@@ -147,6 +151,7 @@ namespace PlayerScores
         public List<SongID> GetScoreIDs()
         {
             var songIDs = playerScores
+                .Where(c => (c.ParsedModifiers & disallowedModifiers) == 0)
                 .Select(c => (SongID)(InternalID)c.SongID)
                 .ToList();
 
@@ -159,7 +164,9 @@ namespace PlayerScores
             //if (score == null) return DateTime.MinValue;
             //return score.TimeSet;
 
-            var score = playerScores.Where(c => c.SongID == songID.GetSong().internalID)
+            var score = playerScores
+                .Where(c => c.SongID == songID.GetSong().internalID)
+                .Where(c => (c.ParsedModifiers & disallowedModifiers) == 0)
                 .OrderByDescending(c => c.TimeSet)
                 .Select(c => c.TimeSet);
 
@@ -232,7 +239,9 @@ namespace PlayerScores
         {
             if (_songIDToScore == null)
             {
-                _songIDToScore = playerScores.ToDictionary(c => (SongID)(InternalID)c.SongID, c => c);
+                _songIDToScore = playerScores
+                    .Where(c => (c.ParsedModifiers & disallowedModifiers) == 0)
+                    .ToDictionary(c => (SongID)(InternalID)c.SongID, c => c);
             }
 
             _songIDToScore.TryGetValue(songID, out var score);
@@ -247,7 +256,6 @@ namespace PlayerScores
 
         public void ShowCache(TextWriter log)
         {
-
             log?.WriteLine($"BeatLeader Score Count: {playerScores.Count()}");
         }
     }

@@ -24,6 +24,7 @@ namespace Actions
             public SuggestSourceManager suggestSM { get => manager.suggestSM; }
             public string playerID { get => manager.songSuggest.activePlayerID; }
             public int targetFillers { get => manager.targetFillers; }
+            public Dictionary<SongID, double> originSongScoreValue => manager.originSongScoreValue;
 
 
             //SongSuggest DTO Values

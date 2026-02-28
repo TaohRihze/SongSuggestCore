@@ -47,6 +47,10 @@ namespace Actions
 
         //List for songs selected as Origin.
         public List<SongID> originSongIDs;
+
+        //Dictionary for calculated value of originSongIDs
+        public Dictionary<SongID, double> originSongScoreValue;
+
         List<SongID> ignoreSongs;
 
         //The two collections of endpoints of the Origin and Target songs from 10k player data based on Active Players data.
@@ -72,7 +76,7 @@ namespace Actions
         int improveSpotsAccSaber = 2;
 
         //Percent of song links to keep (70% seems to work well in general, but acc saber players can use PP Potential slider to adjust this (
-        double LinkKeepPercent = 0.70;
+        double LinkKeepPercent = 0.50;
 
         //Links for variables used in this class from Settings file. Classes are not done here
         public bool ignorePlayedAll => settings.IgnorePlayedAll;
@@ -203,6 +207,9 @@ namespace Actions
             GenerateOriginSongIDs.Execute(dto, out originSongIDs);
             songSuggest.log?.WriteLine("Completion: " + (songSuggestCompletion * 100) + "%");
 
+            //Store PP values on OriginSongs for DTO
+            originSongScoreValue = originSongIDs.ToDictionary(songID => songID, songID => suggestSM.PlayerScoreValue(songID));
+
             //Link the origin songs with the songs on the LeaderBoard as a basis for suggestions.
             ignoreSongs = songSuggest.songBanning.GetPermaBannedIDs();
             GenerateLinks.Execute(dto, out originSongs, out targetSongs, out linkedSongs);
@@ -282,6 +289,7 @@ namespace Actions
             //Find available songs
             var filteredSongs = suggestSM.PlayerScoresIDs()                                 //Grab songID's for songs matching the given Suggest Context from Source Manager
                 .Where(c => !songSuggest.songBanning.IsPermaBanned(c, BanType.Global))      //Remove Perma Banned Songs
+                .Where(c => suggestSM.Leaderboard().top10kSongMeta.Keys.Contains(suggestSM.GetStringID(c))) //Remove Sogns that are not on the 10k ScoreBoard
                 .OrderByDescending(value => suggestSM.PlayerWeightedScoreValue(value))      //Order Songs by Leaderboards Effective value
                 .ToList();
 
@@ -294,11 +302,19 @@ namespace Actions
             double percentToKeep = (double)originSongsCount / (originSongsCount + extraSongsCount);
             int comparativeBestCount = (int)Math.Ceiling(percentToKeep * valueSongCount);
 
-            //Get the songs by 
+            //Reduce the list to relevant Songs for Comparative Best.
             filteredSongs = filteredSongs
                 .Take(valueSongCount)                                           //Grab 75% best of scores
-                .Take(originSongsCount + extraSongsCount)                       //Grab up to the portion that is default cap before acc sorting
-                .OrderByDescending(c => suggestSM.PlayerRelativeScoreValue(c))  //Sort by best Relative Scores (to top score on song) Should find songs you have done comparative best on.
+                .Take(originSongsCount + extraSongsCount)                       //Grab up to the portion that is default cap before comparative best sorting
+                .ToList();
+
+            //Generate Support data for Comparative Best ... Note: songID's can be missing if there is no 10k board data on that songID
+            CreateComparativeOrdering(filteredSongs);
+
+            //Perform ComparativeBest selection, and reduce the list size to wanted size once sorted as ComparativeBest.
+            filteredSongs = filteredSongs
+                .OrderBy(c => _comparativeOrderingIndex[c])                     //Comparative best is where the score would be inserted on a song first index wise
+                .ThenByDescending(c => _comparativeOrdering[c][0].pp)                     //On a tie on index, the biggest value on the song is "first pick" for insert
                 .Take(comparativeBestCount)                                     //Grab the goal of comparative best songs (relevant if less than originSongsCount should be kept to keep a matching % removed instead)
                 .Take(originSongsCount)                                         //Reduce the with acc selection to originSongsCount comparative best songs (default reduction so comparative worst is removed)   
                 .OrderByDescending(c => suggestSM.PlayerWeightedScoreValue(c))  //Reorder back to Score Value (relevant only if player got other prioritised songs like Liked songs before reducing suggest list at higher levels)
@@ -309,6 +325,7 @@ namespace Actions
             songSuggest.log?.WriteLine("Selected Origin Songs");
             var potentialSongs = suggestSM.PlayerScoresIDs()                                //Grab songID's for songs matching the given Suggest Context from Source Manager
                 .Where(c => !songSuggest.songBanning.IsPermaBanned(c, BanType.Global))      //Remove Perma Banned Songs
+                .Where(c => suggestSM.Leaderboard().top10kSongMeta.Keys.Contains(suggestSM.GetStringID(c))) //Remove Sogns that are not on the 10k ScoreBoard
                 .OrderByDescending(value => suggestSM.PlayerWeightedScoreValue(value))      //Order Songs by value
                 .Take(originSongsCount + extraSongsCount)
                 .ToList();
@@ -320,11 +337,44 @@ namespace Actions
                 var songCategory = song.songCategory & suggestSM.LeaderboardSongCategory();
                 var songName = songSuggest.songLibrary.GetDisplayName(songID);
                 var percent = suggestSM.PlayerRelativeScoreValue(songID)*100;
-                songSuggest.log?.WriteLine($"{inFiltered}   SongCategory: {songCategory,-16}   Score: {suggestSM.PlayerScoreValue(songID),8:N2}({suggestSM.PlayerWeightedScoreValue(songID),8:N2})   Advantage%: {percent,6:0.00}%    {songName}");
+
+                var comparativeIndex = _comparativeOrderingIndex.TryGetValue(songID, out var index) ? $"{index,3}" : "   ";
+                var comparativePP = _comparativeOrdering.TryGetValue(songID, out var list) && list.Count > 0 ? $"{list[0].pp,8:N2}" : "        ";
+                 songSuggest.log?.WriteLine($"{inFiltered}   SongCategory: {songCategory,-16}   Score: {suggestSM.PlayerScoreValue(songID),8:N2}({suggestSM.PlayerWeightedScoreValue(songID),8:N2})   Advantage%: {percent,6:0.00}%   Comparative: {comparativeIndex}|{comparativePP}    {songName}");
             }
 
             //Returns the found songs.
             return filteredSongs;
+        }
+
+        public Dictionary<SongID, List<Top10kScore>> _comparativeOrdering;
+        public Dictionary<SongID, int> _comparativeOrderingIndex;
+        public void CreateComparativeOrdering(List<SongID> activeSongs)
+        {
+            var stringSongID = activeSongs
+                .Select(c => suggestSM.GetStringID(c))
+                .ToList();
+
+            _comparativeOrdering = suggestSM.Leaderboard()
+                .top10kPlayers
+                .SelectMany(player => player.top10kScore)
+                .Where(score => stringSongID.Contains(score.songID))
+                .OrderByDescending(c => c.pp)
+                .GroupBy(score => score.songID)
+                .ToDictionary(
+                    g => activeSongs.First(c => suggestSM.GetStringID(c) == g.Key),
+                    g => g.ToList()
+                );
+
+            _comparativeOrderingIndex = _comparativeOrdering
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => 
+                    {
+                        var index = kvp.Value.FindIndex(c => c.pp <= suggestSM.PlayerScoreValue(kvp.Key));
+                        return index >= 0 ? index : kvp.Value.Count;
+                    }
+                );
         }
 
         //Generate the weighting for the different Filters and stores them in the Endpoint Data.

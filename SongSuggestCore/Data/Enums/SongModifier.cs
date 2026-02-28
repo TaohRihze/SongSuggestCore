@@ -23,5 +23,9 @@ namespace SongSuggestNS
         NO = 524288,   //No Obstacles (Walls) 
         NB = 1048576,  //No Bombs
         NA = 2097152,  //No Arrows
+
+        //Beat Leader Specific.
+        OD = 16777216, //Old Dots
+        OP = 33554432, //Over Platform
     }
 }

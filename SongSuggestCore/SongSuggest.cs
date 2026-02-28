@@ -22,7 +22,7 @@ namespace SongSuggestNS
         //Static Version Info based on a SemVer.
         private static int _semVerMajor = 2;
         private static int _semVerMinor = 3;
-        private static int _semVerPatch = 0;
+        private static int _semVerPatch = 4;
 
         //2.2.1: Test with reduced link requirement from 50 down to 10.
         //2.2.2: Updated web links to Beat Leader
@@ -33,6 +33,10 @@ namespace SongSuggestNS
         //2.2.7: Fix, Alternate leaderboard assignment forgot to keep looking for an entry every round until options was exhausted, causing possible assignment starvation on maps.
         //2.2.8: Display Local Score value for last session generated leaderboard if local. (Overwrites AP default display, generate non local to reset).
         //2.3.0: Support for Auto Balancer leaderboard (Including Local Score display updates).
+        //2.3.1: Fix to not using players score when calculating distance
+        //2.3.2: Removed Slower Song scores (for now)
+        //2.3.3: Updated algorithm for Comparative Best Profile Select
+        //2.3.4: Fix to out of bounds, trying to lookup Comparative Best data for songs for that was removed by low total playcount filter
 
         public static Version GetCoreVersion() { return new Version(_semVerMajor, _semVerMinor, _semVerPatch); }
         public static Version MinimumUIVersion() { return new Version(2, 0, 0); }

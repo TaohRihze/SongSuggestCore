@@ -3,6 +3,7 @@ using System.Linq;
 using LinkedData;
 using SongLibraryNS;
 
+
 namespace Actions
 {
     public static class GenerateLinks
@@ -112,17 +113,12 @@ namespace Actions
 
             //If originsongs PP is 0, it is because it is a seed/liked song, so it should be treated as optimal distance
             //Else we calculate the absolute distance (over or under does not matter)
-            double distance = 0;
-            if (originSong.pp != 0)
-            {
-                //Testing showed this distribution gives a good split between harder/easier songs for ordering. Would have expected 4.0 as it matched older system more with
-                //Default 70% kept links for normal songs ... for Acc Saber this needs reduced.
-                distance = Math.Abs(Math.Pow(suggestedSong.pp / originSong.pp, 3.0) - 1);
-            }
+            //A directional focus toward easier songs of a ^2.5 along with 50% kept seems to give best results.
+            var songID = SongLibrary.StringIDToSongID(originSong.songID, data.suggestSM.LeaderboardSongIDType());
+            var playerScore = data.originSongScoreValue[songID];
+            if (playerScore == 0) playerScore = originSong.pp;
+            var distance = Math.Abs(Math.Pow(originSong.pp / playerScore, 2.5) - 1);
                 
-                
-
-
             var songLink = new SongLink() 
             { 
                 playerID = player.id, 
@@ -144,15 +140,6 @@ namespace Actions
 
             //**TEST** Keep all links, distance is done later
             return true;
-
-            ////Score validation check, we need to fail only if the song is not unplayed (0 value), and is outside the given limits. Single lining this is prone to errors.
-            //double playerSongValue = data.suggestSM.PlayerScoreValue(originSongCandidate.songID);
-            //bool invalidScore = true;
-            //if (playerSongValue == 0) invalidScore = false;
-            //if ((originSongCandidate.pp < (playerSongValue * data.betterAccCap)) && (originSongCandidate.pp > (playerSongValue * data.worseAccCap))) invalidScore = false;
-            //if (invalidScore) return false; //Other checks could be later, hence the return for this section.
-
-            //return true; //All checks passed
         }
     }
 }
