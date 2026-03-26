@@ -55,6 +55,8 @@ namespace SongLibraryNS
         public double complexityAccSaber { get; set; }
         //---Auto Balancer ratings
         public double complexityAutoBalancer { get; set; }
+        [JsonIgnore]
+        public double AutoBalancerAlternate { get; set; }
         public String GetDifficultyText()
         {
             switch (difficulty)

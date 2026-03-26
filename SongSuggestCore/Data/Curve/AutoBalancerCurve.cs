@@ -9,47 +9,47 @@ namespace Curve
         private static double SecretMultiplier = 50;
 
         public static List<CurvePoint> curvePoints = new List<CurvePoint>
-            {
-                new CurvePoint { Accuracy = 0.0, Multiplier = 0.0 },
-                new CurvePoint { Accuracy = 0.6, Multiplier = 0.2150822648 },
-                new CurvePoint { Accuracy = 0.65, Multiplier = 0.675 },
-                new CurvePoint { Accuracy = 0.7, Multiplier = 0.7037013503 },
-                new CurvePoint { Accuracy = 0.75, Multiplier = 0.7328650857 },
-                new CurvePoint { Accuracy = 0.8, Multiplier = 0.7630545785 },
-                new CurvePoint { Accuracy = 0.825, Multiplier = 0.7901826847 },
-                new CurvePoint { Accuracy = 0.85, Multiplier = 0.818450017 },
-                new CurvePoint { Accuracy = 0.875, Multiplier = 0.8455690457 },
-                new CurvePoint { Accuracy = 0.9, Multiplier = 0.8664472938 },
-                new CurvePoint { Accuracy = 0.91, Multiplier = 0.8789288551 },
-                new CurvePoint { Accuracy = 0.92, Multiplier = 0.8960626347 },
-                new CurvePoint { Accuracy = 0.93, Multiplier = 0.9297628503 },
-                new CurvePoint { Accuracy = 0.94, Multiplier = 0.9560875979 },
-                new CurvePoint { Accuracy = 0.95, Multiplier = 1.0 },
-                new CurvePoint { Accuracy = 0.955, Multiplier = 1.021672529 },
-                new CurvePoint { Accuracy = 0.96, Multiplier = 1.061386588 },
-                new CurvePoint { Accuracy = 0.965, Multiplier = 1.116191989 },
-                new CurvePoint { Accuracy = 0.97, Multiplier = 1.18813117 },
-                new CurvePoint { Accuracy = 0.9725, Multiplier = 1.21695223 },
-                new CurvePoint { Accuracy = 0.975, Multiplier = 1.27811188 },
-                new CurvePoint { Accuracy = 0.9775, Multiplier = 1.342562124 },
-                new CurvePoint { Accuracy = 0.98, Multiplier = 1.415976399 },
-                new CurvePoint { Accuracy = 0.9825, Multiplier = 1.504822421 },
-                new CurvePoint { Accuracy = 0.985, Multiplier = 1.607965506 },
-                new CurvePoint { Accuracy = 0.9875, Multiplier = 1.733915806 },
-                new CurvePoint { Accuracy = 0.99, Multiplier = 1.97 },
-                new CurvePoint { Accuracy = 0.99125, Multiplier = 2.06 },
-                new CurvePoint { Accuracy = 0.9925, Multiplier = 2.18 },
-                new CurvePoint { Accuracy = 0.99375, Multiplier = 2.300805628 },
-                new CurvePoint { Accuracy = 0.995, Multiplier = 2.472370362 },
-                new CurvePoint { Accuracy = 0.99625, Multiplier = 2.64359469 },
-                new CurvePoint { Accuracy = 0.9975, Multiplier = 2.83 },
-                new CurvePoint { Accuracy = 0.99825, Multiplier = 2.98 },
-                new CurvePoint { Accuracy = 0.999, Multiplier = 3.15 },
-                new CurvePoint { Accuracy = 0.9995, Multiplier = 3.3 },
-                new CurvePoint { Accuracy = 1.0, Multiplier = 3.5 }
-            };
-
-        public static double Multiplier(double accuracy)
+        //New Test
+        {
+            new CurvePoint { Accuracy = 0.0, Multiplier = 0 },
+            new CurvePoint { Accuracy = 0.6, Multiplier = 0.4697536774 },
+            new CurvePoint { Accuracy = 0.65, Multiplier = 0.5440899991 },
+            new CurvePoint { Accuracy = 0.7, Multiplier = 0.602809644 },
+            new CurvePoint { Accuracy = 0.75, Multiplier = 0.6708364523 },
+            new CurvePoint { Accuracy = 0.8, Multiplier = 0.7394098703 },
+            new CurvePoint { Accuracy = 0.825, Multiplier = 0.8114936026 },
+            new CurvePoint { Accuracy = 0.85, Multiplier = 0.882409261 },
+            new CurvePoint { Accuracy = 0.875, Multiplier = 0.8946818696 },
+            new CurvePoint { Accuracy = 0.9, Multiplier = 0.9114805466 },
+            new CurvePoint { Accuracy = 0.91, Multiplier = 0.9205326834 },
+            new CurvePoint { Accuracy = 0.92, Multiplier = 0.9316737749 },
+            new CurvePoint { Accuracy = 0.93, Multiplier = 0.9455130995 },
+            new CurvePoint { Accuracy = 0.94, Multiplier = 0.9638784925 },
+            new CurvePoint { Accuracy = 0.95, Multiplier = 1 },
+            new CurvePoint { Accuracy = 0.955, Multiplier = 1.026198973 },
+            new CurvePoint { Accuracy = 0.96, Multiplier = 1.065453912 },
+            new CurvePoint { Accuracy = 0.965, Multiplier = 1.119418574 },
+            new CurvePoint { Accuracy = 0.97, Multiplier = 1.196883976 },
+            new CurvePoint { Accuracy = 0.9725, Multiplier = 1.24606145 },
+            new CurvePoint { Accuracy = 0.975, Multiplier = 1.299329794 },
+            new CurvePoint { Accuracy = 0.9775, Multiplier = 1.361128036 },
+            new CurvePoint { Accuracy = 0.98, Multiplier = 1.431717295 },
+            new CurvePoint { Accuracy = 0.9825, Multiplier = 1.516058839 },
+            new CurvePoint { Accuracy = 0.985, Multiplier = 1.61336931 },
+            new CurvePoint { Accuracy = 0.9875, Multiplier = 1.729393333 },
+            new CurvePoint { Accuracy = 0.99, Multiplier = 1.88267038 },
+            new CurvePoint { Accuracy = 0.99125, Multiplier = 1.97258247 },
+            new CurvePoint { Accuracy = 0.9925, Multiplier = 2.075811646 },
+            new CurvePoint { Accuracy = 0.99375, Multiplier = 2.181390896 },
+            new CurvePoint { Accuracy = 0.995, Multiplier = 2.346766472 },
+            new CurvePoint { Accuracy = 0.99625, Multiplier = 2.482026286 },
+            new CurvePoint { Accuracy = 0.9975, Multiplier = 2.656889198 },
+            new CurvePoint { Accuracy = 0.99825, Multiplier = 2.761806946 },
+            new CurvePoint { Accuracy = 0.999, Multiplier = 2.866724693 },
+            new CurvePoint { Accuracy = 0.9995, Multiplier = 2.936669858 },
+            new CurvePoint { Accuracy = 1.0, Multiplier = 3.006615023 }
+        };
+public static double Multiplier(double accuracy)
         {
             //Set start and end point to inital points
             CurvePoint startPost = curvePoints.Where(c => c.Accuracy <= accuracy).Last();

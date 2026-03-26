@@ -141,7 +141,7 @@ namespace Actions
             {
                 Console.WriteLine("Using Local Scores");
                 songSuggest.activePlayer.ActiveScoreLocations.Clear();
-                songSuggest.activePlayer.ActiveScoreLocations.Add(ScoreLocation.SessionScores);
+                songSuggest.activePlayer.ActiveScoreLocations.Add(ScoreLocation.LocalScores);
             }
 
             songSuggest.log?.WriteLine("Starting Song Suggest");

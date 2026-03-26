@@ -18,6 +18,8 @@ namespace BeatLeaderJson
     public class Score
     {
         public int id { get; set; }
+        public string playerId { get; set; }
+        public BLPlayer player { get; set; }
         public int baseScore { get; set; }
         public int modifiedScore { get; set; }
         public string modifiers { get; set; }
@@ -29,6 +31,12 @@ namespace BeatLeaderJson
         public float accuracy { get; set; }
         public float pp { get; set; }
         public int epochTime { get; set; }
+    }
+
+    public class BLPlayer
+    {
+        public string id { get; set; }
+        public string name { get; set; }
     }
 
     public class LeaderboardCompact

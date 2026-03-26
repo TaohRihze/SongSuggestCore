@@ -22,21 +22,17 @@ namespace SongSuggestNS
         //Static Version Info based on a SemVer.
         private static int _semVerMajor = 2;
         private static int _semVerMinor = 3;
-        private static int _semVerPatch = 4;
+        private static int _semVerPatch = 8;
 
-        //2.2.1: Test with reduced link requirement from 50 down to 10.
-        //2.2.2: Updated web links to Beat Leader
-        //2.2.3: Support functions for Acc Saber Reweight tool
-        //2.2.4: Rewrite of Suggest Logic to be more generic. Almost all Acc Saber special code gone.
-        //2.2.5: Fix where wrong max score could be used (known error corrections always get applied, regardless if fixed or not on source)
-        //2.2.6: Created Alternative Algorithm for comparative best, that tries to split found top 30's evenly among songs, and activated it default for BL.
-        //2.2.7: Fix, Alternate leaderboard assignment forgot to keep looking for an entry every round until options was exhausted, causing possible assignment starvation on maps.
-        //2.2.8: Display Local Score value for last session generated leaderboard if local. (Overwrites AP default display, generate non local to reset).
         //2.3.0: Support for Auto Balancer leaderboard (Including Local Score display updates).
         //2.3.1: Fix to not using players score when calculating distance
         //2.3.2: Removed Slower Song scores (for now)
         //2.3.3: Updated algorithm for Comparative Best Profile Select
         //2.3.4: Fix to out of bounds, trying to lookup Comparative Best data for songs for that was removed by low total playcount filter
+        //2.3.5: More adjustments for Auto Balancer (Web + Storage)
+        //2.3.6: Fixes to Beat Leader searching
+        //2.3.7: Auto Balancer Curve 1.3
+        //2.3.8: Bugfix: Local Scores is set to use Local Scores, not Session Scores.
 
         public static Version GetCoreVersion() { return new Version(_semVerMajor, _semVerMinor, _semVerPatch); }
         public static Version MinimumUIVersion() { return new Version(2, 0, 0); }

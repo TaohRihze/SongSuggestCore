@@ -24,6 +24,20 @@ namespace BeatLeaderJson
     {
         public string id { get; set; }
         public List<Score> scores { get; set; }
+        public BLSong song { get; set; }
+        public int plays { get; set; }
+    }
+
+    public class BLSong
+    {
+        public List<BLDifficulty> difficulties { get; set; }
+    }
+
+    public class BLDifficulty
+    {
+        public string difficultyName { get; set; }
+        public string modeName{ get; set; }
+        public int maxScore { get; set; }
     }
 
     public class Clan

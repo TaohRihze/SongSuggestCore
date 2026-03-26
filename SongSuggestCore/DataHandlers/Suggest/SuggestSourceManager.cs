@@ -105,26 +105,6 @@ namespace Actions
             return allLikedSongIDs;
          }
 
-        ////Returns the calculated value of a songID .. unknown songs got 0 accuracy so 0 is returned.
-        //public double CalculatedScore(SongID songID, double accuracy)
-        //{
-        //    Song song = songID.GetSong();
-
-        //    switch (leaderboardType)
-        //    {
-        //        case LeaderboardType.ScoreSaber:
-        //            double starRating = song.starScoreSaber;
-        //            return ScoreSaberCurve.PP(accuracy, starRating);
-        //        case LeaderboardType.AccSaber:
-        //            double complexityRating = song.complexityAccSaber;
-        //            double score = AccSaberCurve.AP(accuracy, complexityRating);
-        //            return score;
-        //    }
-
-        //    //Unknown handling detected
-        //    throw new InvalidOperationException($"Unknown CalculatedScore Source found: {leaderboardType}");
-        //}
-
         internal string GetStringID (SongID songID)
         {
             switch (leaderboardType)

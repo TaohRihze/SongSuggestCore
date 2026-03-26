@@ -191,8 +191,12 @@ namespace ActivePlayerData
                 {
                     case LeaderboardType.ScoreSaber:
                     case LeaderboardType.AccSaber:
-                    case LeaderboardType.AutoBalancer:
                         scoreIDs = GetRankedLocationScoreIDs(ScoreLocation.ScoreSaber);
+                        break;
+                    case LeaderboardType.AutoBalancer:
+                        scoreIDs = GetRankedLocationScoreIDs(ScoreLocation.ScoreSaber)
+                            .Union(GetRankedLocationScoreIDs(ScoreLocation.BeatLeader))
+                            .ToList();
                         break;
                     case LeaderboardType.BeatLeader:
                         scoreIDs = GetRankedLocationScoreIDs(ScoreLocation.BeatLeader);

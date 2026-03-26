@@ -180,7 +180,7 @@ namespace WebDownloading
             try
             {
                 //https://api.accsaber.com/ranked-maps
-                String songInfo = client.DownloadString("https://api.accsaber.com/ranked-maps");
+                String songInfo = client.DownloadString("https://api.h2.accsaber.com/ranked-maps");
                 return JsonConvert.DeserializeObject<List<AccSaberSongMeta>>(songInfo, serializerSettings);
             }
             catch
@@ -267,6 +267,31 @@ namespace WebDownloading
             return new BeatLeaderJson.LeaderboardClanRankings();
         }
 
+        //Generic web puller for BeatLeader Leaderboard
+        public BeatLeaderJson.Leaderboard GetBeatLeaderLeaderboard(SongID songID, int page, int count, string context)
+        {
+            try
+            {
+                _BeatLeaderThrottler.Call();
+                //https://api.beatleader.com/leaderboard/2bf61xx51?page=1&count=0&leaderboardContext=noMods
+                string beatLeaderLeaderboardID = songID.GetSong().beatLeaderID;
+
+                //This is internal handling as it is data missing in SongLibrary that could have been there, but is not maintained currently, only ranked songs are kept.
+                if (string.IsNullOrEmpty(beatLeaderLeaderboardID))
+                {
+                    songSuggest.log?.WriteLine("This leaderboard is not in known Beat Leader data (Ranked Songs Only): " + songID);
+                    return new BeatLeaderJson.Leaderboard();
+                }
+                string webString = $"https://api.beatleader.com/leaderboard/{beatLeaderLeaderboardID}/?page={page}&count={count}&LeaderboardContext={context}";
+                String songInfo = client.DownloadString(webString);
+                return JsonConvert.DeserializeObject<BeatLeaderJson.Leaderboard>(songInfo, serializerSettings);
+            }
+            catch
+            {
+                songSuggest.log?.WriteLine("Error finding Leaderboard on BeatLeader with ID: " + songID);
+            }
+            return new BeatLeaderJson.Leaderboard();
+        }
 
         //Generic web puller for BeatLeader Leaderboard
         public BeatLeaderJson.Leaderboard GetBeatLeaderLeaderboard(SongID songID, int page, int count)
