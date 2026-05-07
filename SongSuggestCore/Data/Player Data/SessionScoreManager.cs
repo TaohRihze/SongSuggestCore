@@ -39,7 +39,7 @@ namespace PlayerScores
                 SongName = song.name,
                 TimeSet = DateTime.UtcNow,
                 Accuracy = accuracy,
-                //Modifiers = modifiers,
+                Modifiers = modifiers,
             };
 
             //Adds the score to the grouped dataset

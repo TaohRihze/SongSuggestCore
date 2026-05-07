@@ -100,6 +100,7 @@ namespace PlayerScores
                     playerScore.Accuracy = (double)record.score.baseScore / record.leaderboard.maxScore;
                     playerScore.SourcePlays = record.leaderboard.plays;
                     playerScore.SourceRank = record.score.rank;
+                    playerScore.Modifiers = record.score.modifiers;
                     Updated = true;
                 }
 

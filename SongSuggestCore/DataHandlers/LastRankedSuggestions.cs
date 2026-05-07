@@ -45,7 +45,9 @@ namespace SongSuggestNS
         {
             List<String> saveSuggestions = lastSuggestions
                 .OrderBy(c => c.Value)
-                .Select(c => c.Key.GetSong().internalID)
+                .Select(c => c.Key.GetSong())
+                .Where(c => c != null)
+                .Select(c => c.internalID)
                 .ToList();
             return (saveSuggestions);
         }

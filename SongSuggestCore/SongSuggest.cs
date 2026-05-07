@@ -22,7 +22,7 @@ namespace SongSuggestNS
         //Static Version Info based on a SemVer.
         private static int _semVerMajor = 2;
         private static int _semVerMinor = 3;
-        private static int _semVerPatch = 8;
+        private static int _semVerPatch = 11;
 
         //2.3.0: Support for Auto Balancer leaderboard (Including Local Score display updates).
         //2.3.1: Fix to not using players score when calculating distance
@@ -33,6 +33,11 @@ namespace SongSuggestNS
         //2.3.6: Fixes to Beat Leader searching
         //2.3.7: Auto Balancer Curve 1.3
         //2.3.8: Bugfix: Local Scores is set to use Local Scores, not Session Scores.
+        //2.3.9: Add AccSaberReloaded Endpoints
+        //2.3.10:Fix crash when last suggest lists a song that has been deranked (null reference return on the ID from SongLibrary)
+        //2.3.11: Add AccSaberReloaded leaderboard sync.
+        
+        //2.3.X: Include handling of modifiers for different leaderboards vs score locations
 
         public static Version GetCoreVersion() { return new Version(_semVerMajor, _semVerMinor, _semVerPatch); }
         public static Version MinimumUIVersion() { return new Version(2, 0, 0); }
@@ -559,7 +564,22 @@ namespace SongSuggestNS
 
         public void UpdateAccSaberCacheFiles()
         {
-            //No online location yet.
+            log?.WriteLine("Starting to load Acc Saber data");
+
+            ////Get time of latest update to Leaderboard data.
+            var lastUpdate = webDownloader.GetAccSaberReloadedLeaderboardUpdateTime();
+
+            DateTime lastUpdateDateTime = lastUpdate.refreshTime;
+            log?.WriteLine($"Acc Saber Reloaded Web Update Time. Time: {lastUpdateDateTime:d}");
+
+            //Updates the leaderboard if needed.
+            if (filesMeta.accSaberLeaderboardUpdated < lastUpdateDateTime)
+            {
+                log?.WriteLine("Pulling new Leaderboard data");
+                RefreshAccSaberLeaderBoard();
+                filesMeta.accSaberLeaderboardUpdated = lastUpdateDateTime;
+                fileHandler.SaveFilesMeta(filesMeta);
+            }
         }
 
         //For now refresh request is manual.
@@ -579,6 +599,7 @@ namespace SongSuggestNS
                 log?.WriteLine("Pulling new Leaderboard data");
                 RefreshBeatLeaderLeaderBoard();
                 filesMeta.beatLeaderLeaderboardUpdated = lastUpdate;
+                fileHandler.SaveFilesMeta(filesMeta);
             }
         }
 
@@ -628,6 +649,83 @@ namespace SongSuggestNS
             //If the loaderboard still needs the onetime filtering perform this.
             if (removeScoreSaberOnlyScoresFromBeatLeaderLeaderBoard) RemoveScoreSaberOnlyScoresFromBeatLeaderLeaderBoard();
 
+        }
+
+        //Downloads newest Leaderboard
+        private void RefreshAccSaberLeaderBoard()
+        {
+            //var beatLeaderPlayerList = webDownloader.GetBeatLeaderLeaderboard();
+            var accSaberPlayerList = webDownloader.GetAccSaberReloadedLeaderboard();
+
+            //Verify Received Data
+            //Removal of mismatching players
+
+            var toRemove = new List<Top10kPlayer>();
+            log?.WriteLine($"Starting Players: {accSaberPlayerList.Count()}");
+
+            //Check for players with less than 30 scores starting
+            log?.WriteLine($"--- Check For too Few Scores ---");
+            int fewScores = 0;
+            foreach (var player in accSaberPlayerList)
+            {
+                if (player.top10kScore.Count < 30)
+                {
+                    fewScores++;
+                    Console.WriteLine($"Player:{player.name}({player.id}) Rank: {player.rank} Scores: {player.top10kScore.Count}");
+                    toRemove.Add(player);
+                }
+            }
+            log?.WriteLine($"Few Scores: {fewScores}");
+
+            //Check for players with too large spread between 6th and last score
+            log?.WriteLine($"--- Check For too Large Spread ---");
+            int totalSpread = 0;
+            foreach (var player in accSaberPlayerList)
+            {
+                double diff = player.top10kScore[5].pp / player.top10kScore.Last().pp;
+                if (diff < 0.88)
+                {
+                    totalSpread++;
+                    Console.WriteLine($"Player:{player.name}({player.id}) Rank: {player.rank} Diff: {diff}");
+                    toRemove.Add(player);
+                }
+            }
+
+            log?.WriteLine($"Large Spread: {totalSpread}");
+            log?.WriteLine();
+
+            //Cannot check this as Song Library is not loaded yet
+            ////Check for unknown songID's
+            //log?.WriteLine($"--- Check For unknown scores (and remove if under 20) ---");
+            //int unknownScores = 0;
+            //int toFewScoresLeft = 0;
+            //foreach (var player in accSaberPlayerList)
+            //{
+            //    foreach (var song in player.top10kScore)
+            //    {
+            //        SongID songID = (ScoreSaberID)song.songID;
+            //        if ((songID.GetSong()) == null)
+            //        {
+            //            player.top10kScore.Remove(song);
+            //            unknownScores++;
+            //        }
+            //    }
+            //    if (player.top10kScore.Count < 20)
+            //    {
+            //        toFewScoresLeft++;
+            //        toRemove.Add(player);
+            //    }
+
+            //}
+
+            //log?.WriteLine($"Unknown Song IDs: {unknownScores}");
+            //log?.WriteLine($"Players with too few known scores: {toFewScoresLeft}");
+            //log?.WriteLine();
+
+            accSaberPlayerList = accSaberPlayerList.Except(toRemove).ToList();
+
+            //Save the pruned file
+            CreateComparativeBestLeaderboardEvenMapDistribution(accSaberPlayerList, "AccSaberLeaderboardData");
         }
 
         //Downloads newest Leaderboard

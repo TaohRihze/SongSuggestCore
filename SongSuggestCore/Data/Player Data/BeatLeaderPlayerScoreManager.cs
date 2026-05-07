@@ -67,19 +67,6 @@ namespace PlayerScores
                 //Process each found record.
                 foreach (var record in scores.data)
                 {
-                    ////Check for boosted modifiers and skip to next record if found
-                    //string modifiers = record.score.modifiers;
-                    //bool boostedModifiers = modifiers.Contains("SF") ||
-                    //                        modifiers.Contains("FS") || 
-                    //                        modifiers.Contains("GN") ||
-                    //                        modifiers.Contains("GN") ||
-                    //                        modifiers.Contains("NA") ||
-                    //                        modifiers.Contains("NB") ||
-                    //                        modifiers.Contains("NF") ||
-                    //                        modifiers.Contains("SS") ||
-                    //                        modifiers.Contains("NO");
-                    //if (boostedModifiers) continue;
-
                     Song song = ((BeatLeaderID)record.leaderboard.id).GetSong();
                     
                     //If song is unknown by SongLibrary it is a non ranked score and we skip it.

@@ -4,6 +4,7 @@ using ScoreSabersJson;
 using BeatSaverJson;
 using BeatLeaderJson;
 using AccSaberJson;
+using AccSaberReloadedJson;
 using Newtonsoft.Json;
 using SongSuggestNS;
 using Data;
@@ -26,7 +27,8 @@ namespace WebDownloading
 
         //Throttlers
         private Throttler _ScoreSaberThrottler = new Throttler() {callPerPeriod = 100, callPeriodSeconds = 15 }; //400/60
-        private Throttler _BeatLeaderThrottler = new Throttler() {callPerPeriod = 19, callPeriodSeconds = 4 }; //50/10
+        private Throttler _BeatLeaderThrottler = new Throttler() {callPerPeriod = 24, callPeriodSeconds = 5 }; //50/10
+        private Throttler _AccSaberReloadedThrottler = new Throttler() { callPerPeriod = 100, callPeriodSeconds = 15 }; //400/60
 
         public WebDownloader()
         {
@@ -441,7 +443,47 @@ namespace WebDownloading
             return new BeatLeaderJson.ClanMembersList();
         }
 
+        //BeatLeader last updated Leaderboard Time
+        public AccSaberReloadedLastUpdated GetAccSaberReloadedLeaderboardUpdateTime()
+        {
+            string webString = "";
+            try
+            {
+                _AccSaberReloadedThrottler.Call();
+                //https://api.accsaberreloaded.com/v1/songsuggest/refresh-time
+                webString = $"https://api.accsaberreloaded.com/v1/songsuggest/refresh-time";
 
+                String updated = client.DownloadString(webString);
+                return JsonConvert.DeserializeObject<AccSaberReloadedLastUpdated>(updated, serializerSettings);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                songSuggest.log?.WriteLine($"Error getting: {webString}");
+            }
+            return new AccSaberReloadedLastUpdated();
+        }
+
+
+        //Beatleader Leaderboard
+        public List<Top10kPlayer> GetAccSaberReloadedLeaderboard()
+        {
+            string webString = "";
+            try
+            {
+                _AccSaberReloadedThrottler.Call();
+                //https://api.accsaberreloaded.com/v1/songsuggest
+                webString = $"https://api.accsaberreloaded.com/v1/songsuggest";
+
+                String songInfo = client.DownloadString(webString);
+                return JsonConvert.DeserializeObject<List<Top10kPlayer>>(songInfo, serializerSettings);
+            }
+            catch
+            {
+                songSuggest.log?.WriteLine($"Error getting: {webString}");
+            }
+            return new List<Top10kPlayer>();
+        }
 
         public FilesMeta GetFilesMeta()
         {
