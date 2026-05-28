@@ -512,6 +512,7 @@ namespace Actions
 
             //Create a lookup for ranks of the leaderboards. If multiple leaderboards use the sub leaderboards rank.
             var scoreToRank = sortedSuggestions
+                .Where(c => c.GetSong() != null)
                 .Select(c => new { score = c, Masked = suggestSM.LeaderboardSongCategory() & c.GetSong().songCategory}) //Reduce the SongCategory to Relevant categories only
                 .GroupBy(x => x.Masked)                                                                                 //Group by Category
                 .Select(g => g.Select((x, index) => new { x.score, GroupIndex = index + 1 }))                           //Assign Rank Index in each Category (1-index)
@@ -520,6 +521,13 @@ namespace Actions
 
             foreach (SongID songID in sortedSuggestions)
             {
+                //If the song is unknown add it to ignore list
+                if (songID.GetSong() == null)
+                {
+                    ignoreSongs.Add(songID);
+                    continue;
+                }
+
                 int currentSongRank = suggestSM.PlayerScoreRank(songID);
 
                 //Add songs ID to ignore list if current rank is not expected improveable by at least X spots, and it is not an unplayed song

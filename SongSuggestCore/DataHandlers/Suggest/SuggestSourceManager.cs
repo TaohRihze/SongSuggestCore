@@ -62,6 +62,7 @@ namespace Actions
         //Returns the specific Rank of a sub leaderboard (e.g. acc sabers 3 leaderboards separate ranks (An Acc Saber song only has 1 actual category))
         internal int PlayerScoreRank(SongID value)
         {
+            if (value.GetSong() == null) return -1;
             SongCategory category = LeaderboardSongCategory() & value.GetSong().songCategory;
             return songSuggest.activePlayer.GetLeaderboardRank(value, leaderboardType, category);
         }

@@ -22,7 +22,7 @@ namespace SongSuggestNS
         //Static Version Info based on a SemVer.
         private static int _semVerMajor = 2;
         private static int _semVerMinor = 3;
-        private static int _semVerPatch = 11;
+        private static int _semVerPatch = 13;
 
         //2.3.0: Support for Auto Balancer leaderboard (Including Local Score display updates).
         //2.3.1: Fix to not using players score when calculating distance
@@ -33,9 +33,11 @@ namespace SongSuggestNS
         //2.3.6: Fixes to Beat Leader searching
         //2.3.7: Auto Balancer Curve 1.3
         //2.3.8: Bugfix: Local Scores is set to use Local Scores, not Session Scores.
-        //2.3.9: Add AccSaberReloaded Endpoints
-        //2.3.10:Fix crash when last suggest lists a song that has been deranked (null reference return on the ID from SongLibrary)
+        //2.3.9:  Add AccSaberReloaded Endpoints
+        //2.3.10: Fix crash when last suggest lists a song that has been deranked (null reference return on the ID from SongLibrary)
         //2.3.11: Add AccSaberReloaded leaderboard sync.
+        //2.3.12: Fixed Throttler issues with 4900+ BL scores profiles.
+        //2.3.13: Fixed unknown songs in Leaderboard Data when suggesting songs. Even with filtering songs could get deranked and old leaderboard data could be present.
         
         //2.3.X: Include handling of modifiers for different leaderboards vs score locations
 
@@ -94,6 +96,7 @@ namespace SongSuggestNS
             fileHandler.CreatePaths();
 
             webDownloader = new WebDownloader { songSuggest = this };
+            if (CoreSettings.MaxWebRequests) webDownloader.FullThrottle();
 
             filesMeta = fileHandler.LoadFilesMeta();
 
@@ -693,34 +696,6 @@ namespace SongSuggestNS
 
             log?.WriteLine($"Large Spread: {totalSpread}");
             log?.WriteLine();
-
-            //Cannot check this as Song Library is not loaded yet
-            ////Check for unknown songID's
-            //log?.WriteLine($"--- Check For unknown scores (and remove if under 20) ---");
-            //int unknownScores = 0;
-            //int toFewScoresLeft = 0;
-            //foreach (var player in accSaberPlayerList)
-            //{
-            //    foreach (var song in player.top10kScore)
-            //    {
-            //        SongID songID = (ScoreSaberID)song.songID;
-            //        if ((songID.GetSong()) == null)
-            //        {
-            //            player.top10kScore.Remove(song);
-            //            unknownScores++;
-            //        }
-            //    }
-            //    if (player.top10kScore.Count < 20)
-            //    {
-            //        toFewScoresLeft++;
-            //        toRemove.Add(player);
-            //    }
-
-            //}
-
-            //log?.WriteLine($"Unknown Song IDs: {unknownScores}");
-            //log?.WriteLine($"Players with too few known scores: {toFewScoresLeft}");
-            //log?.WriteLine();
 
             accSaberPlayerList = accSaberPlayerList.Except(toRemove).ToList();
 

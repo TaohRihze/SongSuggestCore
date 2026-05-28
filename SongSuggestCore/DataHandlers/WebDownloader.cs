@@ -26,15 +26,23 @@ namespace WebDownloading
         private JsonSerializerSettings serializerSettings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
 
         //Throttlers
-        private Throttler _ScoreSaberThrottler = new Throttler() {callPerPeriod = 100, callPeriodSeconds = 15 }; //400/60
-        private Throttler _BeatLeaderThrottler = new Throttler() {callPerPeriod = 24, callPeriodSeconds = 5 }; //50/10
-        private Throttler _AccSaberReloadedThrottler = new Throttler() { callPerPeriod = 100, callPeriodSeconds = 15 }; //400/60
+        private Throttler _ScoreSaberThrottler = new Throttler() {callPerPeriod = 75, callPeriodSeconds = 16 }; //400/60
+        private Throttler _BeatLeaderThrottler = new Throttler() {callPerPeriod = 30, callPeriodSeconds = 11 }; //50/10
+        private Throttler _AccSaberReloadedThrottler = new Throttler() { callPerPeriod = 75, callPeriodSeconds = 16 }; //400/60
 
         public WebDownloader()
         {
             //Adding Tls12 to allowed protocols to be able to download from the GIT.
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
             client.Encoding = Encoding.UTF8;
+        }
+
+        //Default throttler should not impact in game client much unless a player has many scores, but the out of game client has some large batch jobs that could use full speed
+        public void FullThrottle()
+        {
+            _ScoreSaberThrottler = new Throttler() { callPerPeriod = 100, callPeriodSeconds = 16 }; //400/60
+            _BeatLeaderThrottler = new Throttler() { callPerPeriod = 50, callPeriodSeconds = 11 }; //50/10
+            _AccSaberReloadedThrottler = new Throttler() { callPerPeriod = 100, callPeriodSeconds = 16 }; //400/60
         }
 
         //Generic web puller for scores (starts page 1, page 0 and 1 gives same results)
@@ -549,34 +557,43 @@ namespace WebDownloading
 
     internal class Throttler
     {
-        int calls = 0;
-        DateTime periodStart = DateTime.UtcNow;
-
-        public int callPerPeriod { get; set; }
+        private int _callPerPeriod;
+        public int callPerPeriod
+        {
+            get
+            {
+                return _callPerPeriod;
+            }
+            set
+            {
+                requests = new DateTime[value];
+                _callPerPeriod = value;
+            }
+        }
         public int callPeriodSeconds { get; set; }
+
+        public int callIndex = 0;
+
+        public DateTime[] requests;
 
         public void Call()
         {
-            //Count up calls, check if we hit the 15 second mark of 100 calls
-            calls++;
-            if (calls < callPerPeriod) return;
-
+            var previousIndexTime = requests[callIndex];
 
             //Figure out how long the 100 calls have taken.
-            double difference = (DateTime.UtcNow - periodStart).TotalSeconds;
+            double timeSince = (DateTime.UtcNow - previousIndexTime).TotalSeconds;
 
-            //Sleep missing time to 15 seconds
-            if (difference < callPeriodSeconds)
+            double missingTime = callPeriodSeconds - timeSince;
+
+            if (missingTime >= 0)
             {
-                double sleepMS = (callPeriodSeconds - difference) * 1000;
-                Console.WriteLine("Sleeping: {0}ms", sleepMS);
+                double sleepMS = (missingTime * 1000) + 1; //adding one MS to round up.
+                Console.WriteLine($"Sleeping: {sleepMS}ms");
                 System.Threading.Thread.Sleep((int)sleepMS);
             }
-
-            //Reset Counter
-            calls = 0;
-            periodStart = DateTime.UtcNow;
-
+            //Update when new request is expected fired.
+            requests[callIndex] = DateTime.UtcNow;
+            callIndex = (callIndex + 1) % callPerPeriod;
         }
     }
 }
