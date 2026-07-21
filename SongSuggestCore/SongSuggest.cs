@@ -22,14 +22,16 @@ namespace SongSuggestNS
         //Static Version Info based on a SemVer.
         private static int _semVerMajor = 2;
         private static int _semVerMinor = 3;
-        private static int _semVerPatch = 14;
+        private static int _semVerPatch = 16;
 
         //2.3.10: Fix crash when last suggest lists a song that has been deranked. (null reference return on the ID from SongLibrary)
         //2.3.11: Add AccSaberReloaded leaderboard sync.
         //2.3.12: Fixed Throttler issues with 4900+ BL scores profiles.
         //2.3.13: Fixed unknown songs in Leaderboard Data when suggesting songs. Even with filtering songs could get deranked and old leaderboard data could be present.
         //2.3.14: Auto Update of Acc Saber ranked songs via AccSaberReloaded.
-        
+        //2.3.15: Some missed System.Out messages moved to Log output
+        //2.3.16: Null Files.Meta handling, and added support to only update leaderboards if local version does not match song libraries update time.
+
         //2.3.X: Include handling of modifiers for different leaderboards vs score locations
 
         public static Version GetCoreVersion() { return new Version(_semVerMajor, _semVerMinor, _semVerPatch); }
@@ -90,6 +92,8 @@ namespace SongSuggestNS
             if (CoreSettings.MaxWebRequests) webDownloader.FullThrottle();
 
             filesMeta = fileHandler.LoadFilesMeta();
+            //If there is no filesMeta, create a new one. This is if the file failed to load due to incorrect save/empty file
+            if (filesMeta == null) filesMeta = new FilesMeta();
 
             status = "Checking loaded data for new Online Files";
 
@@ -216,6 +220,7 @@ namespace SongSuggestNS
             {
                 //Perform ScoreSaber Updates if active
                 //Performs all GIT updates including Song Library, so disabling this will also disable those checks.
+                //Note this update also ensures the AccSaber and BeatLeader leaderboardfile update is kept as web version does not know local version when replacing data.
                 if (CoreSettings.UpdateScoreSaberLeaderboard)
                 {
                     UpdateScoreSaberCacheFiles();
@@ -378,7 +383,7 @@ namespace SongSuggestNS
             //Should always be active
             if (!activePlayer.ActiveScoreLocations.Contains(ScoreLocation.SessionScores)) activePlayer.ActiveScoreLocations.Add(ScoreLocation.SessionScores);
 
-            Console.WriteLine("Checking for Alt AP string");
+            Log.WriteLine("Checking for Alt AP string");
             //Check if we are using alternative display (Local Score mode, and/or AutoBalancer mode)
             bool localScoresPresent = false;
             if (activePlayer.ActiveScoreLocations.Contains(ScoreLocation.LocalScores)) localScoresPresent = true;
@@ -543,18 +548,22 @@ namespace SongSuggestNS
             log?.WriteLine($"Scoresaber Player Data Cache Version: {diskVersion.top10kVersion}({diskVersion.top10kUpdated}) Web: {cacheFilesWebVersion.top10kVersion}(Timestamp: {cacheFilesWebVersion.top10kUpdated})");
             if (formatChange || contentChange)
             {
-                log?.WriteLine("Starting Download of ScoreSaber Player Data");
+                log?.WriteLine("Starting Download of ScoreSaber Leaderboard Data");
                 List<Top10kPlayer> top10kPlayerData = webDownloader.GetTop10kPlayers();
                 fileHandler.SaveScoreBoard(top10kPlayerData, "Top10KPlayers");
                 //top10kPlayers.Load();
 
                 filesUpdated = true;
-                log?.WriteLine("Downloaded and Updated ScoreSaber Player data");
+                log?.WriteLine("Downloaded and Updated ScoreSaber Leaderboard data");
             }
 
             //Save the new local data version if any updates has been completed. If anything fails next restart should attempt full update again.
             if (filesUpdated)
             {
+                //Update when BL and AccSaber leaderboards update to when those files was received before saving.
+                cacheFilesWebVersion.beatLeaderLeaderboardUpdated = diskVersion.beatLeaderLeaderboardUpdated;
+                cacheFilesWebVersion.accSaberLeaderboardUpdated = diskVersion.accSaberLeaderboardUpdated;
+
                 fileHandler.SaveFilesMeta(cacheFilesWebVersion);
                 filesMeta = cacheFilesWebVersion;
                 fileHandler.SaveFilesFormatVersions(fileFormatExpectedVersion);
@@ -569,10 +578,11 @@ namespace SongSuggestNS
             var lastUpdate = webDownloader.GetAccSaberReloadedLeaderboardUpdateTime();
 
             DateTime lastUpdateDateTime = lastUpdate.refreshTime;
-            log?.WriteLine($"Acc Saber Reloaded Web Update Time. Time: {lastUpdateDateTime:d}");
+            log?.WriteLine($"Acc Saber Reloaded Web Update Time.  Time: {lastUpdateDateTime:yyyy-MM-dd HH:mm:ss}");
+            log?.WriteLine($"Acc Saber Reloaded Disk Update Time. Time: {filesMeta.accSaberLeaderboardUpdated:yyyy-MM-dd HH:mm:ss}");
 
             //Updates the leaderboard if needed.
-            if (filesMeta.accSaberLeaderboardUpdated < lastUpdateDateTime)
+            if (filesMeta.accSaberLeaderboardUpdated != lastUpdateDateTime)
             {
                 log?.WriteLine("Pulling new Leaderboard data");
                 RefreshAccSaberLeaderBoard();
@@ -589,10 +599,12 @@ namespace SongSuggestNS
             long lastUpdate = webDownloader.GetBeatLeaderLeaderboardUpdateTime();
 
             DateTime lastUpdateDateTime = DateTimeOffset.FromUnixTimeSeconds(lastUpdate).DateTime;
-            log?.WriteLine($"Beat Leader Web Update Time. Unix: {lastUpdate} Time: {lastUpdateDateTime:d}");
+            DateTime diskUpdateDateTime = DateTimeOffset.FromUnixTimeSeconds(filesMeta.beatLeaderLeaderboardUpdated).DateTime;
+            log?.WriteLine($"Beat Leader Web Update Time.  Unix: {lastUpdate,10} Time: {lastUpdateDateTime:yyyy-MM-dd HH:mm:ss}");
+            log?.WriteLine($"Beat Leader Disk Update Time. Unix: {filesMeta.beatLeaderLeaderboardUpdated,10} Time: {diskUpdateDateTime:yyyy-MM-dd HH:mm:ss}");
 
             //Updates the leaderboard if needed.
-            if (filesMeta.beatLeaderLeaderboardUpdated < lastUpdate)
+            if (filesMeta.beatLeaderLeaderboardUpdated != lastUpdate)
             {
                 log?.WriteLine("Pulling new Leaderboard data");
                 RefreshBeatLeaderLeaderBoard();

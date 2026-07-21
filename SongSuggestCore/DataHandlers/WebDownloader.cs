@@ -26,7 +26,7 @@ namespace WebDownloading
         private JsonSerializerSettings serializerSettings = new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore };
 
         //Throttlers
-        private Throttler _ScoreSaberThrottler = new Throttler() {callPerPeriod = 75, callPeriodSeconds = 16 }; //400/60
+        private Throttler _ScoreSaberThrottler = new Throttler() {callPerPeriod = 25, callPeriodSeconds = 6 }; //400/60
         private Throttler _BeatLeaderThrottler = new Throttler() {callPerPeriod = 30, callPeriodSeconds = 11 }; //50/10
         private Throttler _AccSaberReloadedThrottler = new Throttler() { callPerPeriod = 75, callPeriodSeconds = 16 }; //400/60
 
@@ -40,17 +40,24 @@ namespace WebDownloading
         //Default throttler should not impact in game client much unless a player has many scores, but the out of game client has some large batch jobs that could use full speed
         public void FullThrottle()
         {
-            _ScoreSaberThrottler = new Throttler() { callPerPeriod = 50, callPeriodSeconds = 11 }; //400/60
+            _ScoreSaberThrottler = new Throttler() { callPerPeriod = 25, callPeriodSeconds = 4 }; //400/60
             //_ScoreSaberThrottler = new Throttler() { callPerPeriod = 20, callPeriodSeconds = 6 }; //400/60
             _BeatLeaderThrottler = new Throttler() { callPerPeriod = 50, callPeriodSeconds = 11 }; //50/10
             _AccSaberReloadedThrottler = new Throttler() { callPerPeriod = 100, callPeriodSeconds = 16 }; //400/60
         }
 
         //Generic web puller for scores (starts page 1, page 0 and 1 gives same results)
+        string errorPlayer = "";
+        int retriesPlayerScores = 0;
         public PlayerScoreCollection GetScoreSaberPlayerScores(String playerID, String sorting, int count, int page)
         {
             try
             {
+                if (errorPlayer != playerID)
+                {
+                    errorPlayer = playerID;
+                    retriesPlayerScores = 0;
+                }
                 _ScoreSaberThrottler.Call();
                 //https://scoresaber.com/api/player/76561197993806676/scores?limit=20&sort=recent&page=2
                 String scoresJSON = client.DownloadString("https://scoresaber.com/api/player/" + playerID + "/scores?limit=" + count + "&sort=" + sorting + "&page=" + page);
@@ -58,26 +65,61 @@ namespace WebDownloading
             }
             catch (Exception ex)
             {
+                //Console.WriteLine("Headers");
+                //var webResponse = (((WebException)ex).Response as HttpWebResponse);
+                //foreach (string headerName in webResponse.Headers.AllKeys)
+                //{
+                //    Console.WriteLine($"{headerName}:\n{webResponse.Headers[headerName]}\n");
+                //}
+
+                retriesPlayerScores++;
                 string path = $"https://scoresaber.com/api/player/{playerID}/scores?limit={count}&sort={sorting}&page={page}";
-                songSuggest.log?.WriteLine($"Error on user: {playerID} page: {page}\nPath:{path}\n{ex.Message}");
+                songSuggest.log?.WriteLine($"Error on user: {playerID} page: {page}\nPath:{path}\n{ex.Message}   Attempt: {retriesPlayerScores}");
+                if (retriesPlayerScores < 10 && !ex.Message.Contains("404"))
+                {
+                    System.Threading.Thread.Sleep((int)10000);
+                    return GetScoreSaberPlayerScores(playerID, sorting, count, page);
+                }
             }
             return new PlayerScoreCollection();
         }
 
         //Generic web puller for top players (starts page 1, page 0 and 1 gives same results)
+        int errorPlayerPage = 0;
+        int retriesPlayerPage = 0;
         public PlayerCollection GetPlayers(int page)
         {
             try
             {
+                if (errorPlayerPage != page)
+                {
+                    errorPlayerPage = page;
+                    retriesPlayerPage = 0;
+                }
                 _ScoreSaberThrottler.Call();
                 //https://scoresaber.com/api/players?page=2
                 String playersJSON = client.DownloadString("https://scoresaber.com/api/players?page=" + page);
                 return JsonConvert.DeserializeObject<PlayerCollection>(playersJSON, serializerSettings);
 
             }
-            catch
+            catch (Exception ex)
             {
-                songSuggest.log?.WriteLine("Error on " + page);
+                //Console.WriteLine("Headers");
+                //var webResponse = (((WebException)ex).Response as HttpWebResponse);
+                //foreach (string headerName in webResponse.Headers.AllKeys)
+                //{
+                //    Console.WriteLine($"{headerName}:\n{webResponse.Headers[headerName]}\n");
+                //}
+
+
+                retriesPlayerPage++;
+                songSuggest.log?.WriteLine($"Error on {page}   Attempt:{retriesPlayerPage}");
+                if (retriesPlayerPage < 10)
+                {
+                    System.Threading.Thread.Sleep((int)10000);
+                    return GetPlayers(page);
+                }
+
             }
             return new PlayerCollection();
         }
@@ -611,7 +653,7 @@ namespace WebDownloading
             if (missingTime >= 0)
             {
                 double sleepMS = (missingTime * 1000) + 1; //adding one MS to round up.
-                Console.WriteLine($"Sleeping: {sleepMS}ms");
+                SongSuggest.Log?.WriteLine($"Sleeping: {sleepMS}ms");
                 System.Threading.Thread.Sleep((int)sleepMS);
             }
             //Update when new request is expected fired.
