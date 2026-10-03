@@ -22,7 +22,7 @@ namespace SongSuggestNS
         //Static Version Info based on a SemVer.
         private static int _semVerMajor = 2;
         private static int _semVerMinor = 3;
-        private static int _semVerPatch = 16;
+        private static int _semVerPatch = 18;
 
         //2.3.10: Fix crash when last suggest lists a song that has been deranked. (null reference return on the ID from SongLibrary)
         //2.3.11: Add AccSaberReloaded leaderboard sync.
@@ -31,6 +31,8 @@ namespace SongSuggestNS
         //2.3.14: Auto Update of Acc Saber ranked songs via AccSaberReloaded.
         //2.3.15: Some missed System.Out messages moved to Log output
         //2.3.16: Null Files.Meta handling, and added support to only update leaderboards if local version does not match song libraries update time.
+        //2.3.17: On Acc Saber library update new SS/BL id's are now loaded into session, not just saved to disk. (Acc suggest works on first run now).
+        //2.3.18: Had not null verified one of the Log/log writes.
 
         //2.3.X: Include handling of modifiers for different leaderboards vs score locations
 
@@ -383,7 +385,7 @@ namespace SongSuggestNS
             //Should always be active
             if (!activePlayer.ActiveScoreLocations.Contains(ScoreLocation.SessionScores)) activePlayer.ActiveScoreLocations.Add(ScoreLocation.SessionScores);
 
-            Log.WriteLine("Checking for Alt AP string");
+            Log?.WriteLine("Checking for Alt AP string");
             //Check if we are using alternative display (Local Score mode, and/or AutoBalancer mode)
             bool localScoresPresent = false;
             if (activePlayer.ActiveScoreLocations.Contains(ScoreLocation.LocalScores)) localScoresPresent = true;
@@ -724,12 +726,17 @@ namespace SongSuggestNS
                 songLibrary.AddSongCategory(songObject, category);
                 songObject.complexityAccSaber = song.complexity;
                 songObject.name = song.songName;
-                songObject.scoreSaberID = song.ssLeaderboardId;
-                songObject.beatLeaderID = song.blLeaderboardId;
+                if (string.IsNullOrEmpty(songObject.scoreSaberID)) songObject.scoreSaberID = song.ssLeaderboardId;
+                if (string.IsNullOrEmpty(songObject.beatLeaderID)) songObject.beatLeaderID = song.blLeaderboardId;
             }
 
             //Save Updated Library
             songLibrary.Save();
+
+            //Score Saber and Beat Leader ID's can have been assigned in Song object, but are not in the Song Library lookup
+            //Could keep track of if ID's are added and update each song only if updated, but this is very low impact call, so lets keep it simple.
+            songLibrary.ResetLibraryLinks();
+
             filesMeta.accSaberSongsUpdated = filesMeta.accSaberLeaderboardUpdated;
             fileHandler.SaveFilesMeta(filesMeta);
         }
